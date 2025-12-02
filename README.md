@@ -42,6 +42,23 @@ To successfully complete this hackathon, you will need the following:
 - An active Azure subscription, with Owner rights. 
 - Ability to provision resources in **Sweden Central** or [another supported region](https://learn.microsoft.com/en-us/azure/ai-foundry/openai/concepts/models?tabs=global-standard%2Cstandard-chat-completions#global-standard-model-availability). 
 
+## Demo Script 🎬
+
+Looking to showcase this solution to your customers or leadership team? Check out our comprehensive demo materials:
+
+- **[Complete Demo Script](DEMO_SCRIPT.md)**: 45-60 minute demo guide with executive summary, technical deep dives, and talking points tailored for online payments platforms
+- **[Quick Reference Guide](DEMO_QUICK_REFERENCE.md)**: One-page cheat sheet with key commands, timing, and troubleshooting tips for presenters
+
+These guides include:
+- Executive-level introduction and business value propositions
+- Step-by-step demo flow with "wow moments" to emphasize
+- Sample queries and expected outputs for each agent
+- ROI calculations and industry-specific value propositions
+- Common questions and objections with suggested responses
+- Pre-demo checklist and troubleshooting guide
+
+Perfect for showcasing the capabilities of Azure AI and the Microsoft Agent Framework in fraud detection and regulatory compliance scenarios.
+
 ## Challenges
 
 - **Challenge 00**: **[Setup & Data Ingestion](challenge-0/readme.md)** : Set up your development environment, deploy Azure resources (APIM Basic v2), configure environment variables, and ingest sample data using fraud-api
