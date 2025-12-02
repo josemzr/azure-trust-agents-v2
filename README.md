@@ -49,6 +49,7 @@ To successfully complete this hackathon, you will need the following:
 - **Challenge 02**: **[Connect to Alert MCP Server](challenge-2/readme.md)**: Step-by-step connection to your Alert MCP, deploy Container App with OpenAPI, expose as MCP Server, and integrate with orchestration using GitHub Copilot
 - **Challenge 03**: **[Making Your AI Agents Less Mysterious (and More Trackable)](challenge-3/readme.md)**: Transform your fraud detection workflow into a fully transparent, enterprise-grade system with comprehensive observability using OpenTelemetry and Azure Application Insights
 - **Challenge 04**: **[Fraud Alert Management Frontend](challenge-4/README.md)**: Deploy and integrate a fraud alert management frontend with your agent system, including real-time alert visualization, dashboard analytics, and comprehensive alert management capabilities
+- **Challenge 05**: **[Azure Communication Services Voice Call Integration](challenge-5/README.md)**: Integrate Azure Communication Services to automatically call customers when high-risk transactions are detected, enabling real-time fraud verification through interactive voice response
 
 
 ## Contributing
