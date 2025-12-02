@@ -178,7 +178,7 @@ Your security is our priority. Thank you.
             # Play prompt and recognize input (DTMF)
             result = call_connection.start_recognizing_media(
                 input_type=RecognizeInputType.DTMF,
-                target_participant=PhoneNumberIdentifier(self.source_phone_number),
+                target_participant=PhoneNumberIdentifier(target_phone_number),
                 play_prompt=play_source,
                 interrupt_prompt=True,
                 initial_silence_timeout_in_seconds=10,

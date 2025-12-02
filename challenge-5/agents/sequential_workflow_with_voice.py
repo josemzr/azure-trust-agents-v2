@@ -32,9 +32,14 @@ from azure.ai.agents.models import (
 import time
 import sys
 
-# Add parent directory to path to import shared modules
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from acs_voice_call import ACSVoiceCallClient, create_fraud_verification_call_sync
+# Import the ACS voice call module from the same directory
+try:
+    from acs_voice_call import ACSVoiceCallClient, create_fraud_verification_call_sync
+except ImportError:
+    # Fallback for different execution contexts
+    import os
+    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+    from acs_voice_call import ACSVoiceCallClient, create_fraud_verification_call_sync
 
 # Load environment variables
 load_dotenv(override=True)
@@ -53,9 +58,11 @@ transactions_container = database.get_container_client("Transactions")
 def get_transaction_data(transaction_id: str) -> dict:
     """Get transaction data from Cosmos DB"""
     try:
-        query = f"SELECT * FROM c WHERE c.transaction_id = '{transaction_id}'"
+        query = "SELECT * FROM c WHERE c.transaction_id = @transaction_id"
+        parameters = [{"name": "@transaction_id", "value": transaction_id}]
         items = list(transactions_container.query_items(
             query=query,
+            parameters=parameters,
             enable_cross_partition_query=True
         ))
         return items[0] if items else {"error": f"Transaction {transaction_id} not found"}
@@ -66,9 +73,11 @@ def get_transaction_data(transaction_id: str) -> dict:
 def get_customer_data(customer_id: str) -> dict:
     """Get customer data from Cosmos DB"""
     try:
-        query = f"SELECT * FROM c WHERE c.customer_id = '{customer_id}'"
+        query = "SELECT * FROM c WHERE c.customer_id = @customer_id"
+        parameters = [{"name": "@customer_id", "value": customer_id}]
         items = list(customers_container.query_items(
             query=query,
+            parameters=parameters,
             enable_cross_partition_query=True
         ))
         return items[0] if items else {"error": f"Customer {customer_id} not found"}
@@ -79,9 +88,11 @@ def get_customer_data(customer_id: str) -> dict:
 def get_customer_transactions(customer_id: str) -> list:
     """Get all transactions for a customer from Cosmos DB"""
     try:
-        query = f"SELECT * FROM c WHERE c.customer_id = '{customer_id}'"
+        query = "SELECT * FROM c WHERE c.customer_id = @customer_id"
+        parameters = [{"name": "@customer_id", "value": customer_id}]
         items = list(transactions_container.query_items(
             query=query,
+            parameters=parameters,
             enable_cross_partition_query=True
         ))
         return items

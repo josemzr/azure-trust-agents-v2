@@ -9,9 +9,13 @@ import os
 import sys
 from dotenv import load_dotenv
 
-# Add parent directory to path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from acs_voice_call import ACSVoiceCallClient, create_fraud_verification_call_sync
+# Import the ACS voice call module from the same directory
+try:
+    from acs_voice_call import ACSVoiceCallClient, create_fraud_verification_call_sync
+except ImportError:
+    # Fallback for different execution contexts
+    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+    from acs_voice_call import ACSVoiceCallClient, create_fraud_verification_call_sync
 
 # Load environment variables
 load_dotenv(override=True)
