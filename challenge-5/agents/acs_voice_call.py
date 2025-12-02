@@ -275,13 +275,31 @@ def create_fraud_verification_call_sync(
     Synchronous helper function to create a fraud verification call
     
     This is a convenience function for integration with the agent workflow.
+    Returns a dict with success/error information for graceful error handling.
     """
-    client = ACSVoiceCallClient()
-    return client.create_fraud_verification_call(
-        target_phone_number=target_phone_number,
-        customer_name=customer_name,
-        transaction_id=transaction_id,
-        transaction_amount=transaction_amount,
-        currency=currency,
-        destination_country=destination_country
-    )
+    try:
+        client = ACSVoiceCallClient()
+        return client.create_fraud_verification_call(
+            target_phone_number=target_phone_number,
+            customer_name=customer_name,
+            transaction_id=transaction_id,
+            transaction_amount=transaction_amount,
+            currency=currency,
+            destination_country=destination_country
+        )
+    except ValueError as e:
+        # ACS not configured - return error dict instead of raising
+        return {
+            "success": False,
+            "error": f"ACS configuration error: {str(e)}",
+            "target_phone_number": target_phone_number,
+            "transaction_id": transaction_id
+        }
+    except Exception as e:
+        # Any other error
+        return {
+            "success": False,
+            "error": f"Unexpected error: {str(e)}",
+            "target_phone_number": target_phone_number,
+            "transaction_id": transaction_id
+        }
