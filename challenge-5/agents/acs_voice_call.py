@@ -176,12 +176,12 @@ Your security is our priority. Thank you.
             play_source = TextSource(text=message)
             
             # Play prompt and recognize input (DTMF)
+            # Note: target_participant is automatically inferred from the call participants
             result = call_connection.start_recognizing_media(
                 input_type=RecognizeInputType.DTMF,
-                target_participant=PhoneNumberIdentifier(target_phone_number),
                 play_prompt=play_source,
                 interrupt_prompt=True,
-                initial_silence_timeout_in_seconds=10,
+                initial_silence_timeout_in_seconds=timeout_seconds,
                 operation_context="fraud_verification"
             )
             
