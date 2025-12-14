@@ -2,113 +2,141 @@
   {
     "customer_id": "CUST1001",
     "name": "Alice Johnson",
-    "country": "US",
+    "region": "North",
     "account_age_days": 820,
-    "device_trust_score": 0.9,
-    "past_fraud": false
+    "meter_trust_score": 0.9,
+    "past_fraud": false,
+    "property_type": "Single Family Home",
+    "baseline_consumption_kwh": 450
   },
   {
     "customer_id": "CUST1002",
     "name": "Rahul Mehta",
-    "country": "IN",
+    "region": "East",
     "account_age_days": 45,
-    "device_trust_score": 0.4,
-    "past_fraud": true
+    "meter_trust_score": 0.4,
+    "past_fraud": true,
+    "property_type": "Apartment",
+    "baseline_consumption_kwh": 280
   },
   {
     "customer_id": "CUST1003",
     "name": "Chen Wei",
-    "country": "CN",
+    "region": "West",
     "account_age_days": 200,
-    "device_trust_score": 0.6,
-    "past_fraud": false
+    "meter_trust_score": 0.6,
+    "past_fraud": false,
+    "property_type": "Townhouse",
+    "baseline_consumption_kwh": 350
   },
   {
     "customer_id": "CUST1004",
     "name": "Fatima Al-Sayed",
-    "country": "UAE",
+    "region": "South",
     "account_age_days": 10,
-    "device_trust_score": 0.3,
-    "past_fraud": false
+    "meter_trust_score": 0.3,
+    "past_fraud": false,
+    "property_type": "Apartment",
+    "baseline_consumption_kwh": 250
   },
   {
     "customer_id": "CUST1005",
     "name": "Maria Gonzalez",
-    "country": "ES",
+    "region": "Central",
     "account_age_days": 365,
-    "device_trust_score": 0.8,
-    "past_fraud": false
+    "meter_trust_score": 0.8,
+    "past_fraud": false,
+    "property_type": "Single Family Home",
+    "baseline_consumption_kwh": 420
   },
   {
     "customer_id": "CUST1006",
     "name": "John Smith",
-    "country": "UK",
+    "region": "North",
     "account_age_days": 1500,
-    "device_trust_score": 0.95,
-    "past_fraud": false
+    "meter_trust_score": 0.95,
+    "past_fraud": false,
+    "property_type": "Single Family Home",
+    "baseline_consumption_kwh": 480
   },
   {
     "customer_id": "CUST1007",
     "name": "Igor Petrov",
-    "country": "RU",
+    "region": "East",
     "account_age_days": 90,
-    "device_trust_score": 0.3,
-    "past_fraud": true
+    "meter_trust_score": 0.3,
+    "past_fraud": true,
+    "property_type": "Industrial Unit",
+    "baseline_consumption_kwh": 1200
   },
   {
     "customer_id": "CUST1008",
     "name": "Aisha Mohamed",
-    "country": "SO",
+    "region": "South",
     "account_age_days": 25,
-    "device_trust_score": 0.2,
-    "past_fraud": false
+    "meter_trust_score": 0.2,
+    "past_fraud": false,
+    "property_type": "Apartment",
+    "baseline_consumption_kwh": 220
   },
   {
     "customer_id": "CUST1009",
     "name": "David Cohen",
-    "country": "IL",
+    "region": "West",
     "account_age_days": 720,
-    "device_trust_score": 0.88,
-    "past_fraud": false
+    "meter_trust_score": 0.88,
+    "past_fraud": false,
+    "property_type": "Townhouse",
+    "baseline_consumption_kwh": 380
   },
   {
     "customer_id": "CUST1010",
     "name": "Omar Reza",
-    "country": "IR",
+    "region": "Central",
     "account_age_days": 12,
-    "device_trust_score": 0.1,
-    "past_fraud": true
+    "meter_trust_score": 0.1,
+    "past_fraud": true,
+    "property_type": "Apartment",
+    "baseline_consumption_kwh": 260
   },
   {
     "customer_id": "CUST1011",
     "name": "Kim Min-Ji",
-    "country": "KR",
+    "region": "North",
     "account_age_days": 540,
-    "device_trust_score": 0.7,
-    "past_fraud": false
+    "meter_trust_score": 0.7,
+    "past_fraud": false,
+    "property_type": "Townhouse",
+    "baseline_consumption_kwh": 370
   },
   {
     "customer_id": "CUST1012",
     "name": "Hassan Ali",
-    "country": "SY",
+    "region": "East",
     "account_age_days": 30,
-    "device_trust_score": 0.25,
-    "past_fraud": true
+    "meter_trust_score": 0.25,
+    "past_fraud": true,
+    "property_type": "Commercial Building",
+    "baseline_consumption_kwh": 950
   },
   {
     "customer_id": "CUST1013",
     "name": "Elena Rossi",
-    "country": "IT",
+    "region": "South",
     "account_age_days": 2000,
-    "device_trust_score": 0.92,
-    "past_fraud": false
+    "meter_trust_score": 0.92,
+    "past_fraud": false,
+    "property_type": "Single Family Home",
+    "baseline_consumption_kwh": 410
   },
   {
     "customer_id": "CUST1014",
     "name": "Mohammed Jafar",
-    "country": "YE",
+    "region": "West",
     "account_age_days": 5,
-    "device_trust_score": 0.15,
-    "past_fraud": false
+    "meter_trust_score": 0.15,
+    "past_fraud": false,
+    "property_type": "Apartment",
+    "baseline_consumption_kwh": 240
   }
 ]
