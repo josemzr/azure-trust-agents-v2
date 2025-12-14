@@ -1,10 +1,10 @@
-# Challenge 1: Agent Framework Agents for Fraud Detection 🤖
+# Challenge 1: Agent Framework Agents for Energy Fraud Detection 🤖
 
 **Duration:** 60 minutes
 
-In this challenge, we will build a complete fraud detection system by creating three specialized Azure AI Agents and orchestrating them into a seamless workflow. We'll develop a **Customer Data Agent** for transaction retrieval, a **Risk Analyzer Agent** for compliance assessment, and a **Compliance Report Agent** for audit documentation. Finally, we'll connect these agents by creating a Microsoft's Agent Framework [Workflow](https://learn.microsoft.com/en-us/agent-framework/user-guide/workflows/orchestrations/sequential?pivots=programming-language-python), allowing us to create an enterprise-grade fraud detection pipeline.
+In this challenge, we will build a complete energy fraud detection system by creating three specialized Azure AI Agents and orchestrating them into a seamless workflow. We'll develop a **Customer Data Agent** for consumption data retrieval, a **Risk Analyzer Agent** for anomaly assessment, and a **Compliance Report Agent** for audit documentation. Finally, we'll connect these agents by creating a Microsoft's Agent Framework [Workflow](https://learn.microsoft.com/en-us/agent-framework/user-guide/workflows/orchestrations/sequential?pivots=programming-language-python), allowing us to create an enterprise-grade energy fraud detection pipeline.
 
-This comprehensive guide covers **step-by-step agent creation** with detailed instructions for building each specialized agent, explores the **hybrid approach** that balances rule-based regulatory compliance with AI-powered pattern recognition, demonstrates **sequential workflow orchestration** to connect agents into a cohesive pipeline and provides **complete examples** of what each agent produces in the fraud detection process.
+This comprehensive guide covers **step-by-step agent creation** with detailed instructions for building each specialized agent, explores the **hybrid approach** that balances rule-based energy regulatory compliance with AI-powered pattern recognition, demonstrates **sequential workflow orchestration** to connect agents into a cohesive pipeline and provides **complete examples** of what each agent produces in the energy fraud detection process.
 
 The part of the architecture we will be implementing in this challenge is as described below, focusing on the three core agents and their sequential orchestration:
 
@@ -13,9 +13,9 @@ The part of the architecture we will be implementing in this challenge is as des
 The orchestration will follow this architecture:
 
 ```
-TX Input → [Customer Data Agent] → [Risk Analyzer Agent] → [Compliance Report Agent] → Audit Report
-            ↓ Cosmos DB              ↓ Azure AI Search        ↓ Compliance Tools
-         Transaction Data          Regulatory Rules           Audit Reports
+Reading Input → [Customer Data Agent] → [Risk Analyzer Agent] → [Compliance Report Agent] → Audit Report
+                ↓ Cosmos DB              ↓ Azure AI Search        ↓ Compliance Tools
+             Consumption Data          Energy Regulations       Audit Reports
 ```
 
 
@@ -45,20 +45,20 @@ Please take a moment to review these concepts, as they will be important in the 
 
 ### Step 1: Create Individual Agents
 
-First, we'll create three specialized agents that will work together in our fraud detection pipeline. Each agent has distinct capabilities and specific functions:
+First, we'll create three specialized agents that will work together in our energy fraud detection pipeline. Each agent has distinct capabilities and specific functions:
 
 #### **Customer Data Agent** 🗂️
-**Purpose**: Connects to Cosmos DB to fetch transaction and customer information, providing comprehensive data ingestion and normalization services.
+**Purpose**: Connects to Cosmos DB to fetch consumption readings and customer information, providing comprehensive data ingestion and normalization services.
 
 **Core Functions**:
-- **`get_customer_data(customer_id)`**: Retrieves complete customer profiles including name, country, account age, device trust score, and fraud history from Cosmos DB
-- **`get_customer_transactions(customer_id)`**: Fetches all transactions for a specific customer from Cosmos DB for pattern analysis
+- **`get_customer_data(customer_id)`**: Retrieves complete customer profiles including name, region, account age, meter trust score, and fraud history from Cosmos DB
+- **`get_customer_transactions(customer_id)`**: Fetches all consumption readings for a specific customer from Cosmos DB for pattern analysis
 
 **Key Capabilities**:
 - Direct Cosmos DB integration for real-time data access
-- Data normalization (currency, timestamps, amounts)
-- Transaction enrichment with customer metadata
-- Pattern detection for suspicious transaction sequences
+- Data normalization (consumption units, timestamps, meter readings)
+- Reading enrichment with customer metadata
+- Pattern detection for suspicious consumption sequences
 - Clean JSON output with unified structure for downstream analysis
 - Cross-partition querying for comprehensive data retrieval
 
@@ -69,25 +69,25 @@ python customer_data_agent.py
 ```
 
 #### **Risk Analyzer Agent** 🔍
-**Purpose**: Uses Azure AI Search to evaluate fraud risk against regulatory policies, applying sophisticated risk scoring algorithms.
+**Purpose**: Uses Azure AI Search to evaluate energy fraud risk against regulatory policies, applying sophisticated risk scoring algorithms.
 
 **Core Functions**:
-- **Azure AI Search Integration**: Uses HostedFileSearchTool to search through regulations and compliance policies database (index: "regulations-policies")
+- **Azure AI Search Integration**: Uses HostedFileSearchTool to search through energy regulations and compliance policies database (index: "regulations-policies")
 - **Risk Scoring Engine**: Assigns fraud risk scores from 0-100 based on multiple factors
-- **Regulatory Compliance Checking**: Validates transactions against KYC, CIP, and EDD requirements
+- **Regulatory Compliance Checking**: Validates consumption patterns against energy theft prevention and metering regulations
 - **Pattern Analysis**: Detects suspicious patterns using predefined risk thresholds
 
 **Risk Assessment Criteria**:
-- **High-risk countries**: Nigeria (NG), Iran (IR), Russia (RU), North Korea (KP)
-- **Amount thresholds**: Transactions over $10,000 USD trigger additional scrutiny
-- **Account age**: New accounts (< 30 days) receive higher risk scores
-- **Device trust**: Low device trust scores (< 0.5) indicate potential fraud
+- **High consumption anomalies**: Consumption exceeding 1000 kWh/day for residential customers
+- **Low consumption anomalies**: Consumption below 50% of baseline indicating potential meter tampering
+- **Account age**: New accounts (< 30 days) with abnormal consumption receive higher risk scores
+- **Meter trust**: Low meter trust scores (< 0.5) indicate potential tampering or bypass
 
 **Key Capabilities**:
 - Real-time regulatory database queries using Azure AI Search
-- Multi-factor risk assessment combining geographical, behavioral, and regulatory factors
+- Multi-factor risk assessment combining consumption patterns, behavioral, and regulatory factors
 - Explainable AI reasoning with references to specific regulations found via search
-- Integration with sanctions lists and compliance frameworks
+- Integration with energy theft detection frameworks
 
 **To run individually**:
 ```bash
@@ -127,19 +127,19 @@ python compliance_report_agent.py
 
 ## Rule-Based vs AI-Based Decision Making 🎯
 
-This fraud detection pipeline demonstrates a sophisticated hybrid approach combining **rule-based logic** with **AI-powered intelligence** across the three specialized agents:
+This energy fraud detection pipeline demonstrates a sophisticated hybrid approach combining **rule-based logic** with **AI-powered intelligence** across the three specialized agents:
 
 **Rule-Based Components** provide deterministic, auditable decisions essential for regulatory compliance:
-- **Risk Analyzer Agent** implements hardcoded risk thresholds (transactions >$10,000, high-risk countries like Iran/Russia, account age <30 days, device trust <0.5) ensuring consistent, explainable decisions that meet regulatory requirements
-- **Customer Data Agent** applies structured data validation and normalization rules, ensuring data quality and consistency across all transaction processing
+- **Risk Analyzer Agent** implements hardcoded risk thresholds (consumption >1000 kWh/day for residential, consumption <50% of baseline, account age <30 days, meter trust <0.5) ensuring consistent, explainable decisions that meet energy regulatory requirements
+- **Customer Data Agent** applies structured data validation and normalization rules, ensuring data quality and consistency across all consumption reading processing
 - **Compliance Report Agent** uses predefined compliance rating logic (risk scores 80+ = NON_COMPLIANT, 50-79 = CONDITIONAL_COMPLIANCE) providing transparent audit trails
 
 **AI-Powered Intelligence** adds sophisticated pattern recognition and contextual analysis:
-- **Natural Language Processing** enables agents to interpret complex regulatory documents through Azure AI Search, dynamically adapting to evolving compliance requirements
-- **Contextual Risk Assessment** allows the Risk Analyzer to weigh multiple factors intelligently, considering customer history, transaction patterns, and regulatory context beyond simple threshold checks
+- **Natural Language Processing** enables agents to interpret complex energy regulatory documents through Azure AI Search, dynamically adapting to evolving compliance requirements
+- **Contextual Risk Assessment** allows the Risk Analyzer to weigh multiple factors intelligently, considering customer history, consumption patterns, and regulatory context beyond simple threshold checks
 - **Dynamic Report Generation** empowers the Compliance Agent to create nuanced audit narratives, translating technical risk data into executive-ready business intelligence
 
-This **hybrid architecture** ensures both regulatory compliance through transparent rule-based decisions and sophisticated fraud detection through AI-powered pattern recognition, creating an enterprise-grade solution that balances auditability with advanced threat detection capabilities.
+This **hybrid architecture** ensures both regulatory compliance through transparent rule-based decisions and sophisticated energy fraud detection through AI-powered pattern recognition, creating an enterprise-grade solution that balances auditability with advanced theft detection capabilities.
 
 ## Step 2: Add Agent IDs to Environment
 

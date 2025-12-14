@@ -40,24 +40,24 @@ async def main():
                 created_agent = await project_client.agents.create_agent(
                     model=model_deployment_name,
                     name="RiskAnalyserAgent",
-                    instructions="""You are a Risk Analyser Agent evaluating financial transactions for potential fraud.
-                    Given a normalized transaction and customer profile, your task is to:
-                    - Apply fraud detection logic using rule-based checks and regulatory compliance data
+                    instructions="""You are a Risk Analyser Agent evaluating energy consumption patterns for potential fraud and theft.
+                    Given a normalized consumption reading and customer profile, your task is to:
+                    - Apply fraud detection logic using rule-based checks and energy regulatory compliance data
                     - Assign a fraud risk score from 0 to 100
-                    - Generate human-readable reasoning behind the score (e.g., "Transaction from unusual country", "High amount", "Previous fraud history")
+                    - Generate human-readable reasoning behind the score (e.g., "Consumption pattern unusual for property type", "Extremely low consumption", "Previous fraud history")
 
                 You have access to the following tools:
-                - Azure AI Search: Search regulations and policies for compliance checking and fraud detection rules
+                - Azure AI Search: Search energy regulations and policies for compliance checking and fraud detection rules
 
                 Please also consider these risk factors:
                 {
-                "high_risk_countries": ["NG", "IR", "RU", "KP"],
-                "high_amount_threshold_usd": 10000,
+                "high_consumption_threshold_kwh": 1000,
+                "low_consumption_threshold_percent": 50,
                 "suspicious_account_age_days": 30,
-                "low_device_trust_threshold": 0.5
+                "low_meter_trust_threshold": 0.5
                 }
 
-                    Use the Azure AI Search to look up relevant regulations, compliance rules, and fraud detection patterns that apply to the transaction.
+                    Use the Azure AI Search to look up relevant energy regulations, compliance rules, and fraud detection patterns that apply to the consumption reading.
 
                     Output should be:
                     - risk_score: integer (0-100)
@@ -87,7 +87,7 @@ async def main():
                 # Test the agent with a simple query
                 print("\n🧪 Testing the agent with a sample query...")
                 try:
-                    result = await agent.run("Hello, tell me about the main KYC regulations I should consider for fraud detection?")
+                    result = await agent.run("Hello, tell me about the main energy metering regulations I should consider for fraud detection?")
                     print(f"✅ Agent response: {result.text}")
                 except Exception as test_error:
                     print(f"⚠️  Agent test failed (but agent was still created): {test_error}")

@@ -60,18 +60,18 @@ async def main():
                 created_agent = await project_client.agents.create_agent(
                     model=model_deployment_name,
                     name="CustomerDataAgent",
-                    instructions="""You are a Data Ingestion Agent responsible for preparing structured input for fraud detection. 
-                    You will receive raw transaction records and customer profiles. Your task is to:
-                    - Normalize fields (e.g., currency, timestamps, amounts)
+                    instructions="""You are a Data Ingestion Agent responsible for preparing structured input for energy fraud detection. 
+                    You will receive energy consumption readings and customer profiles. Your task is to:
+                    - Normalize fields (e.g., consumption units, timestamps, meter readings)
                     - Remove or flag incomplete data
-                    - Enrich each transaction with relevant customer metadata (e.g., account age, country, device info)
-                    - Output a clean JSON object per transaction with unified structure
+                    - Enrich each reading with relevant customer metadata (e.g., account age, region, meter info, property type, baseline consumption)
+                    - Output a clean JSON object per reading with unified structure
 
                 You have access to the following functions:
                 - get_customer_data: Fetch customer details by customer_id
-                - get_customer_transactions: Get all transactions for a customer
+                - get_customer_transactions: Get all consumption readings for a customer
 
-                    Use these functions to enrich and validate the transaction data.
+                    Use these functions to enrich and validate the consumption data.
                     Ensure the format is consistent and ready for analysis.
                     """
                 )
