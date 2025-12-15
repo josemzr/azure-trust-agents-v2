@@ -18,7 +18,7 @@ cosmos_key = os.environ.get("COSMOS_KEY")
 
 # Initialize Cosmos DB clients globally for function tools
 cosmos_client = CosmosClient(cosmos_endpoint, cosmos_key)
-database = cosmos_client.get_database_client("FinancialComplianceDB")
+database = cosmos_client.get_database_client("EnergyComplianceDB")
 customers_container = database.get_container_client("Customers")
 transactions_container = database.get_container_client("Transactions")
 

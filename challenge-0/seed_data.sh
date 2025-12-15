@@ -64,7 +64,7 @@ def setup_cosmos_db():
     cosmos_client = CosmosClient(os.environ['COSMOS_ENDPOINT'], credential)
     
     # Create database
-    database_name = "FinancialComplianceDB"
+    database_name = "EnergyComplianceDB"
     try:
         database = cosmos_client.create_database_if_not_exists(id=database_name)
         print(f"✅ Database '{database_name}' ready")
@@ -111,8 +111,8 @@ def seed_cosmos_data(container_clients):
                     try:
                         # Ensure document has an id
                         if 'id' not in item:
-                            # Try to infer id field
-                            for key in ['transaction_id', 'customer_id', 'id']:
+                            # Try to infer id field - updated for energy data model
+                            for key in ['reading_id', 'customer_id', 'transaction_id', 'id']:
                                 if key in item:
                                     item['id'] = str(item[key])
                                     break
