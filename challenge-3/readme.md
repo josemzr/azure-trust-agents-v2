@@ -2,7 +2,7 @@
 
 **Expected Duration:** 60 minutes
 
-Welcome to Challenge 3! In this challenge, you'll transform your fraud detection workflow from a "black box" into a **fully transparent, enterprise-grade system** with comprehensive observability. You'll learn how to trace every AI decision, monitor performance in real-time, and build the monitoring infrastructure that financial institutions require for production deployment.
+Welcome to Challenge 3! In this challenge, you'll transform your energy fraud detection workflow from a "black box" into a **fully transparent, enterprise-grade system** with comprehensive observability. You'll learn how to trace every AI decision, monitor performance in real-time, and build the monitoring infrastructure that energy providers require for production deployment.
 
 These are the new components that will be added to our architecture in this challenge:
 
@@ -10,7 +10,7 @@ These are the new components that will be added to our architecture in this chal
 
 **What you'll master:** You'll gain expertise in OpenTelemetry integration for industry-standard distributed tracing across AI workflows. You'll master Azure Application Insights for enterprise monitoring with custom KQL queries and business dashboards. You'll learn performance optimization techniques to identify bottlenecks in AI processing and database queries. You'll develop business intelligence skills to transform technical traces into executive-level fraud detection insights. Finally, you'll build production monitoring systems with alerting capabilities for mission-critical AI applications.
 
-By the end of this challenge, your fraud detection system will have the observability capabilities required for regulatory compliance and enterprise deployment.
+By the end of this challenge, your energy fraud detection system will have the observability capabilities required for regulatory compliance and enterprise deployment.
 
 ## About OpenTelemetry
 [OpenTelemetry](https://github.com/microsoft/opentelemetry-azure-monitor-python) is a powerful open-source observability framework that enables standardized tracing and logging of application workflows, and its integration with the Microsoft Agent Framework brings rich visibility to AI agent operations. By instrumenting agents built with the Microsoft Agent Framework using OpenTelemetry, developers can automatically capture and export detailed trace data—including agent invocations, model calls, tool executions, and internal planning steps—using semantic conventions tailored for GenAI agent systems. 
@@ -19,13 +19,13 @@ This trace data can be exported to the console or integrated with **Azure  Appli
 
 ### 📊 Building Enterprise-Grade Observability Features
 
-To support high-performance, secure, and compliant systems, enterprise-grade observability features are essential. **Real-time monitoring** includes *end-to-end transaction tracing*, enabling full visibility from input to compliance decisions, while *sub-second performance metrics* track database queries and AI processing latencies. **Business KPIs** such as fraud detection rates, risk score distributions, and compliance metrics are continuously surfaced through *intelligent alerting* and anomaly detection. Robust *error tracking* provides detailed failure analysis with business context, ensuring rapid resolution.
+To support high-performance, secure, and compliant systems, enterprise-grade observability features are essential. **Real-time monitoring** includes *end-to-end consumption reading tracing*, enabling full visibility from input to compliance decisions, while *sub-second performance metrics* track database queries and AI processing latencies. **Business KPIs** such as energy fraud detection rates, risk score distributions, and compliance metrics are continuously surfaced through *intelligent alerting* and anomaly detection. Robust *error tracking* provides detailed failure analysis with business context, ensuring rapid resolution.
 
 On the production side, **security compliance** is built-in, with *no sensitive data in traces* and *audit-ready logging*. **Scalability** is achieved through deep integration with tools like *Azure Application Insights*, while **customizable dashboards** offer real-time insights into fraud detection performance. *Automated compliance documentation* streamlines regulatory reporting, and **zero-downtime deployment** is supported by *health checks* and *graceful error handling*, ensuring seamless operation in critical environments.
 
 ### **Understanding Your Observability Options**
 
-Your fraud detection system supports **three different observability backends**, each designed for specific use cases and deployment scenarios:
+Your energy fraud detection system supports **three different observability backends**, each designed for specific use cases and deployment scenarios:
 
 1. **Azure Application Insights (Recommended for Production)**
 
