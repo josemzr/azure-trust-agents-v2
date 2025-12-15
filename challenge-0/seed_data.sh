@@ -16,7 +16,7 @@ echo "🚀 Starting data seeding..."
 
 # Install required Python packages
 echo "📦 Installing required Python packages..."
-pip3 install azure-cosmos azure-search-documents requests --quiet
+pip3 install azure-cosmos azure-search-documents azure-identity requests --quiet
 
 # Create Python script to handle the data import
 cat > seed_data.py << 'EOF'
@@ -26,7 +26,7 @@ from azure.cosmos import CosmosClient, PartitionKey
 from azure.search.documents import SearchClient
 from azure.search.documents.indexes import SearchIndexClient
 from azure.search.documents.indexes.models import SearchIndex, SimpleField, SearchableField
-from azure.core.credentials import AzureKeyCredential
+from azure.identity import DefaultAzureCredential
 
 def load_json_data(file_path):
     """Load data from JSON or JSONL file"""
@@ -60,7 +60,8 @@ def setup_cosmos_db():
     print("📦 Setting up Cosmos DB...")
     
     # Initialize Cosmos client
-    cosmos_client = CosmosClient(os.environ['COSMOS_ENDPOINT'], os.environ['COSMOS_KEY'])
+    credential = DefaultAzureCredential()
+    cosmos_client = CosmosClient(os.environ['COSMOS_ENDPOINT'], credential)
     
     # Create database
     database_name = "FinancialComplianceDB"
@@ -129,7 +130,7 @@ def setup_search_service():
     print("🔍 Setting up Azure AI Search...")
     
     search_endpoint = f"https://{os.environ['SEARCH_SERVICE_NAME']}.search.windows.net"
-    credential = AzureKeyCredential(os.environ['SEARCH_ADMIN_KEY'])
+    credential = DefaultAzureCredential()
     
     index_client = SearchIndexClient(endpoint=search_endpoint, credential=credential)
     
@@ -189,7 +190,7 @@ def seed_search_data(search_endpoint, credential):
 def main():
     """Main function to orchestrate the data seeding"""
     # Check required environment variables
-    required_vars = ['COSMOS_ENDPOINT', 'COSMOS_KEY', 'SEARCH_SERVICE_NAME', 'SEARCH_ADMIN_KEY']
+    required_vars = ['COSMOS_ENDPOINT', 'SEARCH_SERVICE_NAME']
     missing_vars = [var for var in required_vars if not os.environ.get(var)]
     
     if missing_vars:
