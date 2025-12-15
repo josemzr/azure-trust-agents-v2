@@ -48,10 +48,10 @@ def parse_risk_analysis_result(
             analysis_data["parsed_elements"]["risk_level"] = level_match.group(1).upper()
         
         # Extract transaction ID
-        tx_pattern = r'transaction[:\s]*([A-Z0-9]+)'
-        tx_match = re.search(tx_pattern, risk_analysis_text)
-        if tx_match:
-            analysis_data["parsed_elements"]["transaction_id"] = tx_match.group(1)
+        reading_pattern = r'reading[:\s]*([A-Z0-9]+)'
+        reading_match = re.search(reading_pattern, risk_analysis_text, re.IGNORECASE)
+        if reading_match:
+            analysis_data["parsed_elements"]["reading_id"] = reading_match.group(1)
         
         # Extract customer ID
         customer_pattern = r'customer[:\s]*([A-Z0-9]+)'
@@ -61,20 +61,20 @@ def parse_risk_analysis_result(
         
         # Extract key risk factors mentioned
         risk_factors = []
-        if "high-risk country" in text_lower or "high risk country" in text_lower:
-            risk_factors.append("HIGH_RISK_JURISDICTION")
-        if "large amount" in text_lower or "high amount" in text_lower:
-            risk_factors.append("UNUSUAL_AMOUNT")
-        if "suspicious" in text_lower:
+        if "high consumption" in text_lower or "excessive consumption" in text_lower:
+            risk_factors.append("HIGH_CONSUMPTION_ANOMALY")
+        if "low consumption" in text_lower or "unusually low" in text_lower:
+            risk_factors.append("LOW_CONSUMPTION_ANOMALY")
+        if "suspicious" in text_lower or "tampering" in text_lower:
             risk_factors.append("SUSPICIOUS_PATTERN")
-        if "sanction" in text_lower:
-            risk_factors.append("SANCTIONS_CONCERN")
+        if "illegal connection" in text_lower or "bypass" in text_lower:
+            risk_factors.append("ILLEGAL_CONNECTION_CONCERN")
         if "frequent" in text_lower or "unusual frequency" in text_lower:
             risk_factors.append("FREQUENCY_ANOMALY")
         
         analysis_data["parsed_elements"]["risk_factors"] = risk_factors
         
-        logger.info(f"Parsed risk analysis for transaction {analysis_data['parsed_elements'].get('transaction_id', 'UNKNOWN')}")
+        logger.info(f"Parsed risk analysis for reading {analysis_data['parsed_elements'].get('reading_id', 'UNKNOWN')}")
         return analysis_data
         
     except Exception as e:
@@ -83,7 +83,7 @@ def parse_risk_analysis_result(
 
 def generate_audit_report_from_risk_analysis(
     risk_analysis_text: Annotated[str, Field(description="Complete output from Risk Analyser Agent")],
-    report_type: Annotated[str, Field(description="Type of audit report (e.g., 'TRANSACTION_AUDIT', 'COMPLIANCE_AUDIT', 'REGULATORY_AUDIT')")] = "TRANSACTION_AUDIT"
+    report_type: Annotated[str, Field(description="Type of audit report (e.g., 'CONSUMPTION_AUDIT', 'COMPLIANCE_AUDIT', 'REGULATORY_AUDIT')")] = "CONSUMPTION_AUDIT"
 ) -> dict:
     """Generates a formal audit report based on risk analyser findings."""
     try:
@@ -104,7 +104,7 @@ def generate_audit_report_from_risk_analysis(
             "source_analysis": "Risk Analyser Agent",
             
             "executive_summary": {
-                "transaction_id": elements.get("transaction_id", "N/A"),
+                "reading_id": elements.get("reading_id", "N/A"),
                 "customer_id": elements.get("customer_id", "N/A"),
                 "risk_score": elements.get("risk_score", "Not specified"),
                 "risk_level": elements.get("risk_level", "Not specified"),
@@ -121,7 +121,7 @@ def generate_audit_report_from_risk_analysis(
             "audit_trail": {
                 "source_analysis_timestamp": datetime.now().isoformat(),
                 "analysis_method": "Automated Risk Assessment",
-                "data_sources": ["Transaction Data", "Customer Profile", "Regulatory Database"]
+                "data_sources": ["Consumption Data", "Customer Profile", "Energy Regulatory Database"]
             },
             
             "compliance_status": {
@@ -150,60 +150,60 @@ def generate_audit_report_from_risk_analysis(
         # Add specific findings based on risk factors
         risk_factors = elements.get("risk_factors", [])
         
-        if "HIGH_RISK_JURISDICTION" in risk_factors:
+        if "HIGH_CONSUMPTION_ANOMALY" in risk_factors:
             audit_report["detailed_findings"]["compliance_concerns"].append(
-                "Transaction involves high-risk jurisdiction requiring enhanced monitoring"
+                "Energy consumption exceeds normal patterns requiring enhanced monitoring"
             )
             audit_report["detailed_findings"]["regulatory_implications"].append(
-                "Enhanced due diligence procedures required as identified by risk analysis"
+                "Enhanced meter verification procedures required as identified by risk analysis"
             )
             audit_report["compliance_status"]["requires_regulatory_filing"] = True
         
-        if "UNUSUAL_AMOUNT" in risk_factors:
+        if "LOW_CONSUMPTION_ANOMALY" in risk_factors:
             audit_report["detailed_findings"]["compliance_concerns"].append(
-                "Transaction amount exceeds normal patterns for customer profile"
+                "Unusually low consumption compared to customer profile and property type"
             )
             audit_report["detailed_findings"]["regulatory_implications"].append(
-                "Additional transaction verification recommended based on risk assessment"
+                "Meter inspection recommended to verify accuracy and detect tampering"
             )
         
         if "SUSPICIOUS_PATTERN" in risk_factors:
             audit_report["detailed_findings"]["compliance_concerns"].append(
-                "Suspicious transaction pattern detected requiring investigation"
+                "Suspicious consumption pattern detected requiring investigation"
             )
             audit_report["detailed_findings"]["regulatory_implications"].append(
-                "Pattern analysis indicates potential compliance concerns"
+                "Pattern analysis indicates potential meter tampering or theft"
             )
             audit_report["compliance_status"]["requires_immediate_action"] = True
         
-        if "SANCTIONS_CONCERN" in risk_factors:
+        if "ILLEGAL_CONNECTION_CONCERN" in risk_factors:
             audit_report["detailed_findings"]["compliance_concerns"].append(
-                "Potential sanctions-related issues identified in risk analysis"
+                "Potential illegal connection or meter bypass identified in risk analysis"
             )
             audit_report["detailed_findings"]["regulatory_implications"].append(
-                "Immediate review required based on sanctions risk indicators"
+                "Immediate field inspection required based on theft risk indicators"
             )
             audit_report["compliance_status"]["requires_immediate_action"] = True
         
         # Generate recommendations
         if audit_report["compliance_status"]["requires_immediate_action"]:
             audit_report["detailed_findings"]["recommendations"].extend([
-                "Freeze transaction pending investigation",
-                "Conduct enhanced customer due diligence",
-                "File suspicious activity report with regulators",
+                "Schedule immediate meter inspection",
+                "Conduct enhanced customer verification",
+                "File theft report with regulatory authorities",
                 "Document all investigation steps for audit trail"
             ])
         elif audit_report["compliance_status"]["requires_enhanced_monitoring"]:
             audit_report["detailed_findings"]["recommendations"].extend([
                 "Place customer on enhanced monitoring list",
-                "Review transaction against internal risk policies",
-                "Consider additional identity verification",
-                "Monitor future transactions closely"
+                "Review consumption against internal risk policies",
+                "Consider meter upgrade or replacement",
+                "Monitor future consumption patterns closely"
             ])
         else:
             audit_report["detailed_findings"]["recommendations"].extend([
                 "Continue standard monitoring procedures",
-                "File transaction record in compliance database",
+                "File consumption record in compliance database",
                 "No immediate action required"
             ])
         
@@ -215,7 +215,7 @@ def generate_audit_report_from_risk_analysis(
         return {"error": f"Failed to generate audit report: {str(e)}"}
 
 def generate_executive_audit_summary(
-    multiple_risk_analyses: Annotated[List[str], Field(description="List of risk analysis outputs from multiple transactions")],
+    multiple_risk_analyses: Annotated[List[str], Field(description="List of risk analysis outputs from multiple consumption readings")],
     summary_period: Annotated[str, Field(description="Period covered (e.g., 'Daily', 'Weekly', 'Monthly')")] = "Daily"
 ) -> dict:
     """Generates executive-level audit summary from multiple risk analyses."""
@@ -225,7 +225,7 @@ def generate_executive_audit_summary(
             "summary_type": f"{summary_period} Executive Audit Summary",
             "generated_timestamp": datetime.now().isoformat(),
             "period_analyzed": summary_period,
-            "transactions_reviewed": len(multiple_risk_analyses),
+            "readings_reviewed": len(multiple_risk_analyses),
             
             "risk_distribution": {
                 "high_risk_count": 0,
@@ -276,24 +276,24 @@ def generate_executive_audit_summary(
         if risk_factor_counts:
             most_common_risks = risk_factor_counts.most_common(3)
             for risk_factor, count in most_common_risks:
-                summary["key_findings"].append(f"{risk_factor}: {count} occurrences across analyzed transactions")
+                summary["key_findings"].append(f"{risk_factor}: {count} occurrences across analyzed readings")
         
         # Generate audit alerts
         high_risk_pct = (summary["risk_distribution"]["high_risk_count"] / len(multiple_risk_analyses)) * 100
         if high_risk_pct > 20:
             summary["regulatory_alerts"].append(
-                f"AUDIT ALERT: {high_risk_pct:.1f}% of transactions classified as high-risk requiring management attention"
+                f"AUDIT ALERT: {high_risk_pct:.1f}% of consumption readings classified as high-risk requiring management attention"
             )
         
-        if "HIGH_RISK_JURISDICTION" in risk_factor_counts:
+        if "HIGH_CONSUMPTION_ANOMALY" in risk_factor_counts:
             summary["regulatory_alerts"].append(
-                f"Pattern identified: {risk_factor_counts['HIGH_RISK_JURISDICTION']} transactions to high-risk jurisdictions"
+                f"Pattern identified: {risk_factor_counts['HIGH_CONSUMPTION_ANOMALY']} instances of excessive consumption"
             )
         
         # Set compliance dashboard
         summary["compliance_dashboard"]["immediate_actions_required"] = summary["risk_distribution"]["high_risk_count"]
         summary["compliance_dashboard"]["enhanced_monitoring_required"] = summary["risk_distribution"]["medium_risk_count"]
-        summary["compliance_dashboard"]["regulatory_filings_required"] = len([f for f in all_risk_factors if f in ["SANCTIONS_CONCERN", "HIGH_RISK_JURISDICTION"]])
+        summary["compliance_dashboard"]["regulatory_filings_required"] = len([f for f in all_risk_factors if f in ["ILLEGAL_CONNECTION_CONCERN", "HIGH_CONSUMPTION_ANOMALY"]])
         
         # Overall compliance rating
         if summary["compliance_dashboard"]["immediate_actions_required"] > 0:
@@ -303,7 +303,7 @@ def generate_executive_audit_summary(
         else:
             summary["compliance_dashboard"]["overall_compliance_rating"] = "ACCEPTABLE_RISK_LEVEL"
         
-        logger.info(f"Generated executive summary: {len(multiple_risk_analyses)} transactions analyzed, {summary['compliance_dashboard']['overall_compliance_rating']} rating")
+        logger.info(f"Generated executive summary: {len(multiple_risk_analyses)} consumption readings analyzed, {summary['compliance_dashboard']['overall_compliance_rating']} rating")
         return summary
         
     except Exception as e:
@@ -325,7 +325,7 @@ Your primary responsibilities include:
 
 2. **Audit Report Generation**:
    - Generate formal audit reports from risk analysis results
-   - Create transaction-specific audit findings
+   - Create consumption-specific audit findings
    - Provide compliance ratings and risk assessments
 
 3. **Executive Reporting**:
@@ -340,8 +340,8 @@ Your primary responsibilities include:
 
 **Input Sources**:
 - Risk Analyser Agent output text
-- Fraud detection analysis results
-- Transaction risk assessments
+- Energy fraud detection analysis results
+- Consumption risk assessments
 - Customer risk profiles
 
 **Available Tools**:
