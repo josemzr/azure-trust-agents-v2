@@ -53,10 +53,10 @@ def parse_risk_analysis_result(
             analysis_data["parsed_elements"]["risk_level"] = level_match.group(1).upper()
         
         # Extract transaction ID
-        tx_pattern = r'transaction[:\s]*([A-Z0-9]+)'
-        tx_match = re.search(tx_pattern, risk_analysis_text)
-        if tx_match:
-            analysis_data["parsed_elements"]["transaction_id"] = tx_match.group(1)
+        reading_pattern = r'reading[:\s]*([A-Z0-9]+)'
+        reading_match = re.search(reading_pattern, risk_analysis_text, re.IGNORECASE)
+        if reading_match:
+            analysis_data["parsed_elements"]["reading_id"] = reading_match.group(1)
         
         # Extract customer ID
         customer_pattern = r'customer[:\s]*([A-Z0-9]+)'
@@ -79,7 +79,7 @@ def parse_risk_analysis_result(
         
         analysis_data["parsed_elements"]["risk_factors"] = risk_factors
         
-        logger.info(f"Parsed risk analysis for transaction {analysis_data['parsed_elements'].get('transaction_id', 'UNKNOWN')}")
+        logger.info(f"Parsed risk analysis for reading {analysis_data['parsed_elements'].get('reading_id', 'UNKNOWN')}")
         return analysis_data
         
     except Exception as e:
@@ -88,7 +88,7 @@ def parse_risk_analysis_result(
 
 def generate_audit_report_from_risk_analysis(
     risk_analysis_text: Annotated[str, Field(description="Complete output from Risk Analyser Agent")],
-    report_type: Annotated[str, Field(description="Type of audit report (e.g., 'TRANSACTION_AUDIT', 'COMPLIANCE_AUDIT', 'REGULATORY_AUDIT')")] = "TRANSACTION_AUDIT"
+    report_type: Annotated[str, Field(description="Type of audit report (e.g., 'CONSUMPTION_AUDIT', 'COMPLIANCE_AUDIT', 'REGULATORY_AUDIT')")] = "CONSUMPTION_AUDIT"
 ) -> dict:
     """Generates a formal audit report based on risk analyser findings."""
     try:
@@ -109,7 +109,7 @@ def generate_audit_report_from_risk_analysis(
             "source_analysis": "Risk Analyser Agent",
             
             "executive_summary": {
-                "transaction_id": elements.get("transaction_id", "N/A"),
+                "reading_id": elements.get("reading_id", "N/A"),
                 "customer_id": elements.get("customer_id", "N/A"),
                 "risk_score": elements.get("risk_score", "Not specified"),
                 "risk_level": elements.get("risk_level", "Not specified"),
@@ -220,7 +220,7 @@ def generate_audit_report_from_risk_analysis(
         return {"error": f"Failed to generate audit report: {str(e)}"}
 
 def generate_executive_audit_summary(
-    multiple_risk_analyses: Annotated[List[str], Field(description="List of risk analysis outputs from multiple transactions")],
+    multiple_risk_analyses: Annotated[List[str], Field(description="List of risk analysis outputs from multiple consumption readings")],
     summary_period: Annotated[str, Field(description="Period covered (e.g., 'Daily', 'Weekly', 'Monthly')")] = "Daily"
 ) -> dict:
     """Generates executive-level audit summary from multiple risk analyses."""
@@ -230,7 +230,7 @@ def generate_executive_audit_summary(
             "summary_type": f"{summary_period} Executive Audit Summary",
             "generated_timestamp": datetime.now().isoformat(),
             "period_analyzed": summary_period,
-            "transactions_reviewed": len(multiple_risk_analyses),
+            "readings_reviewed": len(multiple_risk_analyses),
             
             "risk_distribution": {
                 "high_risk_count": 0,
@@ -281,13 +281,13 @@ def generate_executive_audit_summary(
         if risk_factor_counts:
             most_common_risks = risk_factor_counts.most_common(3)
             for risk_factor, count in most_common_risks:
-                summary["key_findings"].append(f"{risk_factor}: {count} occurrences across analyzed transactions")
+                summary["key_findings"].append(f"{risk_factor}: {count} occurrences across analyzed readings")
         
         # Generate audit alerts
         high_risk_pct = (summary["risk_distribution"]["high_risk_count"] / len(multiple_risk_analyses)) * 100
         if high_risk_pct > 20:
             summary["regulatory_alerts"].append(
-                f"AUDIT ALERT: {high_risk_pct:.1f}% of transactions classified as high-risk requiring management attention"
+                f"AUDIT ALERT: {high_risk_pct:.1f}% of consumption readings classified as high-risk requiring management attention"
             )
         
         if "HIGH_CONSUMPTION_ANOMALY" in risk_factor_counts:
@@ -308,7 +308,7 @@ def generate_executive_audit_summary(
         else:
             summary["compliance_dashboard"]["overall_compliance_rating"] = "ACCEPTABLE_RISK_LEVEL"
         
-        logger.info(f"Generated executive summary: {len(multiple_risk_analyses)} transactions analyzed, {summary['compliance_dashboard']['overall_compliance_rating']} rating")
+        logger.info(f"Generated executive summary: {len(multiple_risk_analyses)} consumption readings analyzed, {summary['compliance_dashboard']['overall_compliance_rating']} rating")
         return summary
         
     except Exception as e:
