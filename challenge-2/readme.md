@@ -2,11 +2,11 @@
 
 **Expected Duration:** 60 minutes
 
-This challenge focuses on integrating a Fraud Alert Manager API as  Model Context Protocol (MCP) server using Azure API Management. This MCP server will then be connected to an agent, enabling the agent to leverage fraud alert capabilities.
+This challenge focuses on integrating an Energy Fraud Alert Manager API as Model Context Protocol (MCP) server using Azure API Management. This MCP server will then be connected to an agent, enabling the agent to leverage energy fraud alert capabilities.
 
-We will not implement the fraud alerting logic itself, but rather we will leverage Azure API Management to expose a pre-built fraud detection API as MCP server. Sounds cool, right? No need to write new code, just configure and connect! 
+We will not implement the fraud alerting logic itself, but rather we will leverage Azure API Management to expose a pre-built energy fraud detection API as MCP server. Sounds cool, right? No need to write new code, just configure and connect! 
 
-Then, we will add a new Fraud Alert Agent to our existing workflow, creating a robust 4-agent architecture that combines Azure AI Foundry agents with Agents using MCP integration.
+Then, we will add a new Energy Fraud Alert Agent to our existing workflow, creating a robust 4-agent architecture that combines Azure AI Foundry agents with Agents using MCP integration.
 
 See below the pieces of the architecture we will be implementing in this challenge:
 
@@ -17,26 +17,26 @@ See below the pieces of the architecture we will be implementing in this challen
 
 The Model Context Protocol (MCP) is a standardized way for AI models and systems to communicate context and metadata about their operations. It allows different components of an AI ecosystem to share information seamlessly, enabling better coordination and integration.
 
-The Model Context Protocol enables, in this case, leverage fraud alert systems to be integrated with other agents, enhancing their capabilities and responsiveness:
+The Model Context Protocol enables, in this case, leverage energy fraud alert systems to be integrated with other agents, enhancing their capabilities and responsiveness:
 
-- **Real-time alerts**: Immediate notifications when fraud patterns are detected
+- **Real-time alerts**: Immediate notifications when consumption anomalies are detected
 - **Context sharing**: Rich information exchange between systems
 - **Tool orchestration**: Coordinated responses across multiple platforms
 
 ## What the MCP Does in This Challenge
 
-In this fraud detection system, the MCP serves as a **bridge** between your AI agents and a pre-built Fraud Alert Manager API. Here's how it works:
+In this energy fraud detection system, the MCP serves as a **bridge** between your AI agents and a pre-built Energy Fraud Alert Manager API. Here's how it works:
 
 ```
-AI Agent → MCP Server → Fraud Alert Manager API → Alert System
+AI Agent → MCP Server → Energy Fraud Alert Manager API → Alert System
 ```
 
 ### Key Functions:
 
-1. **API Transformation**: Takes an existing Fraud Alert Manager API and exposes it as an MCP server through Azure API Management
+1. **API Transformation**: Takes an existing Energy Fraud Alert Manager API and exposes it as an MCP server through Azure API Management
 
-2. **Real-time Alert Management**: Enables your fraud detection agents to:
-   - **Create fraud alerts** when suspicious patterns are detected
+2. **Real-time Alert Management**: Enables your energy fraud detection agents to:
+   - **Create fraud alerts** when suspicious consumption patterns are detected
    - **Retrieve existing alerts** to inform decision-making
    - **Manage alert lifecycle** (create, read, update status)
 
@@ -44,19 +44,19 @@ AI Agent → MCP Server → Fraud Alert Manager API → Alert System
 
 ### Practical Example:
 
-When your fraud detection agent analyzes a transaction and finds it suspicious, it can:
+When your energy fraud detection agent analyzes a consumption reading and finds it suspicious, it can:
 1. Use the MCP server to create a fraud alert
 2. Notify relevant systems immediately
 3. Retrieve historical alert data to improve decision-making
-4. Coordinate responses across multiple fraud detection platforms
+4. Coordinate responses across multiple energy fraud detection platforms
 
 The MCP essentially **extends your agent's capabilities** by giving it access to external services through a standardized, secure interface.
 
 ## Part 1 - Expose your API as MCP Server with API Management
 
-### Understand the Fraud Alert Manager API
+### Understand the Energy Fraud Alert Manager API
 
-The Fraud Alert Manager API is a pre-built service that simulates fraud alerting functionalities. It provides endpoints to create, retrieve, and manage fraud alerts. This service is hosted on an Azure Container App and has been pre-configured and deployed for this challenge.
+The Energy Fraud Alert Manager API is a pre-built service that simulates energy fraud alerting functionalities. It provides endpoints to create, retrieve, and manage fraud alerts. This service is hosted on an Azure Container App and has been pre-configured and deployed for this challenge.
 
 Before we start, familiarize yourself with the API documentation provided by the Swagger UI at your Container Apps URL:
 
@@ -189,29 +189,29 @@ cd agents
 python sequential_workflow_chal2.py
 ```
 
-Have a look at the major changes from the previous to this newly made workflow. When you run it, it will take Transaction `TX1012` that should be signaled as high risk. As we've seen before, our robust system works in the following way:
+Have a look at the major changes from the previous to this newly made workflow. When you run it, it will take Reading `TX1012` that should be signaled as high risk. As we've seen before, our robust system works in the following way:
 
 ### Scoring Components & Methodology
 
 #### 1. Primary Risk Score Calculation (0-100 Scale)
 
-- **High-Risk Countries (75–85 points):** Transactions to sanctioned or high-risk jurisdictions (Iran, Russia, North Korea, Syria, Yemen, etc.)
-- **Large Transaction Amounts (20 points):** Transactions exceeding $10,000 USD threshold
-- **Suspicious Patterns (30 points):** AI-detected anomalous behavior patterns
-- **Sanctions Concerns (85 points):** Any sanctions-related flags or matches
+- **High Consumption Anomalies (75–85 points):** Consumption exceeding 1000 kWh/day for residential customers or 200% of baseline
+- **Low Consumption Anomalies (20 points):** Consumption below 50% of customer baseline threshold
+- **Suspicious Patterns (30 points):** AI-detected anomalous consumption behavior patterns
+- **Illegal Connection Concerns (85 points):** Any meter bypass or tampering flags
 - **Customer Risk Profile (Variable points):**
   - New accounts (<30 days): Additional risk weighting  
-  - Low device trust score (<0.5): Security concern indicator  
+  - Low meter trust score (<0.5): Tampering concern indicator  
   - Past fraud history: Historical risk amplifier
 
 ### Scoring Algorithm
 
 ```
 Base Score = 0
-+ High-Risk Country: +75-85 points
-+ Large Amount (>$10k): +20 points  
++ High Consumption (>1000 kWh): +75-85 points
++ Low Consumption (<50% baseline): +20 points  
 + Suspicious Activity: +30 points
-+ Sanctions Flag: +85 points
++ Illegal Connection Flag: +85 points
 + Customer Risk Factors: Variable
 Maximum Score: Capped at 100
 ```
@@ -219,13 +219,13 @@ Maximum Score: Capped at 100
 
 - **Low Risk (0–49):** Standard monitoring sufficient  
 - **Medium Risk (50–74):** Enhanced monitoring recommended  
-- **High Risk (75–100):** Immediate action required
+- **High Risk (75–100):** Immediate inspection required
 
 #### 3. Compliance Rating System
 
-- **COMPLIANT:** Low-risk transactions meeting all regulatory requirements  
+- **COMPLIANT:** Low-risk consumption meeting all regulatory requirements  
 - **CONDITIONAL_COMPLIANCE:** Medium risk requiring enhanced monitoring  
-- **NON_COMPLIANT:** High-risk transactions violating compliance thresholds
+- **NON_COMPLIANT:** High-risk consumption violating compliance thresholds
 
 
 ### Conclusion 🎉
@@ -239,17 +239,17 @@ Congratulations! You've successfully completed **Challenge 2: MCP Server Integra
 | **MCP Server Creation** | Exposed existing API as MCP server | Azure API Management + OpenAPI |
 | **Hybrid Agent Architecture** | Combined Azure AI Foundry agents with AzureOpenAIResponsesClient | Microsoft Agent Framework |
 | **Secure Integration** | Connected compliance agent to external alert system | HostedMCPTool + API Management |
-| **Production Workflow** | Built 3-agent sequential fraud detection pipeline | Sequential Workflow Pattern |
+| **Production Workflow** | Built 4-agent sequential energy fraud detection pipeline | Sequential Workflow Pattern |
 
 ### Key Learning Outcomes
 
 - **🔗 MCP Integration**: Converted REST APIs to MCP servers without code changes using Azure API Management
 - **🤖 Agent Architecture**: Strategic selection of agent types - AzureOpenAIResponsesClient for stateless operations, Azure AI Foundry agents for conversational workflows  
-- **🎯 Enterprise System**: Built production-ready fraud detection with 0-100 risk scoring, automated classification (LOW/MEDIUM/HIGH), and real-time alerting
+- **🎯 Enterprise System**: Built production-ready energy fraud detection with 0-100 risk scoring, automated classification (LOW/MEDIUM/HIGH), and real-time alerting
 
 ### What's Next?
 
-In the next challenge, you'll transform your fraud detection workflow from a "black box" into a **fully transparent, enterprise-grade system** with comprehensive observability. You'll master OpenTelemetry integration for industry-standard distributed tracing, Azure Application Insights for enterprise monitoring with custom KQL queries, and build production monitoring systems with real-time dashboards. By implementing three-tier observability (Application, Workflow, and Executor levels), you'll gain complete visibility into every AI decision, performance metric, and business outcome - making your system ready for regulatory compliance and enterprise deployment.
+In the next challenge, you'll transform your energy fraud detection workflow from a "black box" into a **fully transparent, enterprise-grade system** with comprehensive observability. You'll master OpenTelemetry integration for industry-standard distributed tracing, Azure Application Insights for enterprise monitoring with custom KQL queries, and build production monitoring systems with real-time dashboards. By implementing three-tier observability (Application, Workflow, and Executor levels), you'll gain complete visibility into every AI decision, performance metric, and business outcome - making your system ready for regulatory compliance and enterprise deployment.
 
 
 
