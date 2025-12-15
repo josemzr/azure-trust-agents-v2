@@ -26,14 +26,14 @@ transactions_container = database.get_container_client("Transactions")
 
 # Cosmos DB helper functions
 def get_transaction_data(transaction_id: str) -> dict:
-    """Get transaction data from Cosmos DB"""
+    """Get consumption reading data from Cosmos DB"""
     try:
-        query = f"SELECT * FROM c WHERE c.transaction_id = '{transaction_id}'"
+        query = f"SELECT * FROM c WHERE c.reading_id = '{transaction_id}'"
         items = list(transactions_container.query_items(
             query=query,
             enable_cross_partition_query=True
         ))
-        return items[0] if items else {"error": f"Transaction {transaction_id} not found"}
+        return items[0] if items else {"error": f"Reading {transaction_id} not found"}
     except Exception as e:
         return {"error": str(e)}
 
@@ -50,7 +50,7 @@ def get_customer_data(customer_id: str) -> dict:
         return {"error": str(e)}
 
 def get_customer_transactions(customer_id: str) -> list:
-    """Get all transactions for a customer from Cosmos DB"""
+    """Get all consumption readings for a customer from Cosmos DB"""
     try:
         query = f"SELECT * FROM c WHERE c.customer_id = '{customer_id}'"
         items = list(transactions_container.query_items(
@@ -99,11 +99,11 @@ class ComplianceAuditResponse(BaseModel):
     def to_readable_text(self) -> str:
         """Convert the audit response to readable text for DevUI display."""
         text = f"""
-🔍 FRAUD DETECTION WORKFLOW COMPLETE
+🔍 ENERGY FRAUD DETECTION WORKFLOW COMPLETE
 ═══════════════════════════════════════════════════════════════
 
 📋 AUDIT REPORT: {self.audit_report_id}
-Transaction ID: {self.transaction_id}
+Reading ID: {self.transaction_id}
 Status: {self.status}
 
 🎯 EXECUTIVE SUMMARY
@@ -129,7 +129,7 @@ Immediate Action Required: {"YES" if self.requires_immediate_action else "NO"}
 Regulatory Filing Required: {"YES" if self.requires_regulatory_filing else "NO"}
 
 ═══════════════════════════════════════════════════════════════
-Workflow completed successfully. All three agents have processed the transaction.
+Workflow completed successfully. All three agents have processed the consumption reading.
         """
         return text.strip()
 
@@ -160,27 +160,31 @@ async def customer_data_executor(
             analysis_text = f"""
 COSMOS DB DATA ANALYSIS:
 
-Transaction {request.transaction_id}:
-- Amount: ${transaction_data.get('amount')} {transaction_data.get('currency')}
+Consumption Reading {request.transaction_id}:
+- Consumption: {transaction_data.get('consumption_kwh')} kWh
 - Customer: {customer_id}
-- Destination: {transaction_data.get('destination_country')}
+- Meter ID: {transaction_data.get('meter_id')}
+- Reading Type: {transaction_data.get('reading_type')}
 - Timestamp: {transaction_data.get('timestamp')}
 
 Customer Profile ({customer_id}):
 - Name: {customer_data.get('name')}
-- Country: {customer_data.get('country')}
+- Region: {customer_data.get('region')}
+- Property Type: {customer_data.get('property_type')}
 - Account Age: {customer_data.get('account_age_days')} days
-- Device Trust Score: {customer_data.get('device_trust_score')}
+- Meter Trust Score: {customer_data.get('meter_trust_score')}
+- Baseline Consumption: {customer_data.get('baseline_consumption_kwh')} kWh
 - Past Fraud: {customer_data.get('past_fraud')}
 
-Transaction History:
-- Total Transactions: {len(transaction_history) if isinstance(transaction_history, list) else 0}
+Consumption History:
+- Total Readings: {len(transaction_history) if isinstance(transaction_history, list) else 0}
 
-FRAUD RISK INDICATORS:
-- High Amount: {transaction_data.get('amount', 0) > 10000}
-- High Risk Country: {transaction_data.get('destination_country') in ['IR', 'RU', 'NG', 'KP']}
+ENERGY FRAUD RISK INDICATORS:
+- High Consumption: {transaction_data.get('consumption_kwh', 0) > 1000}
+- Low Consumption (potential tampering): {transaction_data.get('consumption_kwh', 0) < customer_data.get('baseline_consumption_kwh', 0) * 0.5}
+- Consumption vs Baseline: {(transaction_data.get('consumption_kwh', 0) / customer_data.get('baseline_consumption_kwh', 1)) * 100:.1f}%
 - New Account: {customer_data.get('account_age_days', 0) < 30}
-- Low Device Trust: {customer_data.get('device_trust_score', 1.0) < 0.5}
+- Low Meter Trust: {customer_data.get('meter_trust_score', 1.0) < 0.5}
 - Past Fraud History: {customer_data.get('past_fraud', False)}
 
 Ready for risk assessment analysis.
@@ -233,21 +237,21 @@ def parse_risk_analysis_result(risk_analysis_text: str) -> dict:
             analysis_data["parsed_elements"]["risk_level"] = level_match.group(1).upper()
         
         # Extract transaction ID
-        tx_pattern = r'transaction[:\s]*([A-Z0-9]+)'
-        tx_match = re.search(tx_pattern, risk_analysis_text)
-        if tx_match:
-            analysis_data["parsed_elements"]["transaction_id"] = tx_match.group(1)
+        reading_pattern = r'reading[:\s]*([A-Z0-9]+)'
+        reading_match = re.search(reading_pattern, risk_analysis_text, re.IGNORECASE)
+        if reading_match:
+            analysis_data["parsed_elements"]["reading_id"] = reading_match.group(1)
         
         # Extract key risk factors mentioned
         risk_factors = []
-        if "high-risk country" in text_lower or "high risk country" in text_lower:
-            risk_factors.append("HIGH_RISK_JURISDICTION")
-        if "large amount" in text_lower or "high amount" in text_lower:
-            risk_factors.append("UNUSUAL_AMOUNT")
-        if "suspicious" in text_lower:
+        if "high consumption" in text_lower or "excessive consumption" in text_lower:
+            risk_factors.append("HIGH_CONSUMPTION_ANOMALY")
+        if "low consumption" in text_lower or "unusually low" in text_lower:
+            risk_factors.append("LOW_CONSUMPTION_ANOMALY")
+        if "suspicious" in text_lower or "tampering" in text_lower:
             risk_factors.append("SUSPICIOUS_PATTERN")
-        if "sanction" in text_lower:
-            risk_factors.append("SANCTIONS_CONCERN")
+        if "illegal connection" in text_lower or "bypass" in text_lower:
+            risk_factors.append("ILLEGAL_CONNECTION_CONCERN")
         if "frequent" in text_lower or "unusual frequency" in text_lower:
             risk_factors.append("FREQUENCY_ANOMALY")
         
@@ -257,7 +261,7 @@ def parse_risk_analysis_result(risk_analysis_text: str) -> dict:
     except Exception as e:
         return {"error": f"Failed to parse risk analysis: {str(e)}"}
 
-def generate_audit_report_from_risk_analysis(risk_analysis_text: str, report_type: str = "TRANSACTION_AUDIT") -> dict:
+def generate_audit_report_from_risk_analysis(risk_analysis_text: str, report_type: str = "CONSUMPTION_AUDIT") -> dict:
     """Generates a formal audit report based on risk analyser findings."""
     try:
         parsed_analysis = parse_risk_analysis_result(risk_analysis_text)
@@ -275,7 +279,7 @@ def generate_audit_report_from_risk_analysis(risk_analysis_text: str, report_typ
             "source_analysis": "Risk Analyser Agent",
             
             "executive_summary": {
-                "transaction_id": elements.get("transaction_id", "N/A"),
+                "reading_id": elements.get("reading_id", "N/A"),
                 "risk_score": elements.get("risk_score", "Not specified"),
                 "risk_level": elements.get("risk_level", "Not specified"),
                 "audit_conclusion": ""
@@ -314,29 +318,35 @@ def generate_audit_report_from_risk_analysis(risk_analysis_text: str, report_typ
         # Add specific findings based on risk factors
         risk_factors = elements.get("risk_factors", [])
         
-        if "HIGH_RISK_JURISDICTION" in risk_factors:
+        if "HIGH_CONSUMPTION_ANOMALY" in risk_factors:
             audit_report["detailed_findings"]["compliance_concerns"].append(
-                "Transaction involves high-risk jurisdiction requiring enhanced monitoring"
+                "Energy consumption exceeds normal patterns requiring enhanced monitoring"
             )
             audit_report["compliance_status"]["requires_regulatory_filing"] = True
         
-        if "SANCTIONS_CONCERN" in risk_factors:
+        if "LOW_CONSUMPTION_ANOMALY" in risk_factors:
             audit_report["detailed_findings"]["compliance_concerns"].append(
-                "Potential sanctions-related issues identified in risk analysis"
+                "Unusually low consumption compared to baseline - potential meter tampering"
+            )
+            audit_report["compliance_status"]["requires_immediate_action"] = True
+        
+        if "ILLEGAL_CONNECTION_CONCERN" in risk_factors:
+            audit_report["detailed_findings"]["compliance_concerns"].append(
+                "Potential illegal connection or meter bypass identified"
             )
             audit_report["compliance_status"]["requires_immediate_action"] = True
         
         # Generate recommendations
         if audit_report["compliance_status"]["requires_immediate_action"]:
             audit_report["detailed_findings"]["recommendations"].extend([
-                "Freeze transaction pending investigation",
-                "Conduct enhanced customer due diligence",
-                "File suspicious activity report with regulators"
+                "Schedule immediate meter inspection",
+                "Conduct enhanced customer verification",
+                "File theft report with regulatory authorities"
             ])
         elif audit_report["compliance_status"]["requires_enhanced_monitoring"]:
             audit_report["detailed_findings"]["recommendations"].extend([
                 "Place customer on enhanced monitoring list",
-                "Review transaction against internal risk policies"
+                "Review consumption against internal risk policies"
             ])
         else:
             audit_report["detailed_findings"]["recommendations"].append(
@@ -372,17 +382,17 @@ async def risk_analyzer_executor(
                     chat_client=client,
                     model_id=model_deployment_name,
                     name="RiskAnalyzerAgent",
-                    instructions="""You are a Risk Analyser Agent evaluating financial transactions for potential fraud.
-                    Given a normalized transaction and customer profile, your task is to:
-                    - Apply fraud detection logic using rule-based checks and regulatory compliance data
+                    instructions="""You are a Risk Analyser Agent evaluating energy consumption patterns for potential fraud and theft.
+                    Given a normalized consumption reading and customer profile, your task is to:
+                    - Apply fraud detection logic using rule-based checks and energy regulatory compliance data
                     - Assign a fraud risk score from 0 to 100
                     - Generate human-readable reasoning behind the score
                     
                     Consider these risk factors:
-                    - High-risk countries: ["NG", "IR", "RU", "KP"]
-                    - High amount threshold: $10,000 USD
+                    - High consumption threshold: 1000 kWh/day for residential
+                    - Low consumption threshold: < 50% of customer baseline
                     - Suspicious account age: < 30 days
-                    - Low device trust threshold: < 0.5
+                    - Low meter trust threshold: < 0.5
                     
                     Output should include:
                     - risk_score: integer (0-100)
@@ -392,19 +402,19 @@ async def risk_analyzer_executor(
                 
                 # Create risk assessment prompt
                 risk_prompt = f"""
-Based on the comprehensive fraud analysis provided below, please provide your expert regulatory and compliance risk assessment:
+Based on the comprehensive energy fraud analysis provided below, please provide your expert regulatory and compliance risk assessment:
 
 Analysis Data: {customer_response.customer_data}
 
 Please focus on:
 1. Validating the risk factors identified in the analysis
 2. Assessing the risk score and level from a regulatory perspective
-3. Providing additional AML/KYC compliance considerations
-4. Checking against sanctions lists and regulatory requirements
-5. Final recommendation on transaction approval/blocking/investigation
+3. Providing additional energy theft and meter tampering considerations
+4. Checking against energy consumption regulations and metering standards
+5. Final recommendation on meter inspection/monitoring/investigation
 6. Regulatory reporting requirements if any
 
-Transaction ID: {customer_response.transaction_id}
+Reading ID: {customer_response.transaction_id}
 
 Provide a structured risk assessment with clear regulatory justification.
 """
@@ -417,14 +427,14 @@ Provide a structured risk assessment with clear regulatory justification.
                 recommendation = "INVESTIGATE"  # Default
                 compliance_notes = ""
                 
-                if "HIGH RISK" in result_text.upper() or "BLOCK" in result_text.upper():
-                    recommendation = "BLOCK"
-                    risk_factors.append("High risk transaction identified")
-                elif "LOW RISK" in result_text.upper() or "APPROVE" in result_text.upper():
-                    recommendation = "APPROVE"
+                if "HIGH RISK" in result_text.upper() or "INSPECT" in result_text.upper():
+                    recommendation = "INSPECT_METER"
+                    risk_factors.append("High risk consumption pattern identified")
+                elif "LOW RISK" in result_text.upper() or "NORMAL" in result_text.upper():
+                    recommendation = "CONTINUE_MONITORING"
                 
-                if "IRAN" in result_text.upper() or "SANCTIONS" in result_text.upper():
-                    compliance_notes = "Sanctions compliance review required"
+                if "TAMPER" in result_text.upper() or "THEFT" in result_text.upper():
+                    compliance_notes = "Energy theft investigation required"
                     
                 final_result = RiskAnalysisResponse(
                     risk_analysis=result_text,
@@ -463,7 +473,7 @@ async def compliance_report_executor(
         # Generate audit report using local functions
         audit_report = generate_audit_report_from_risk_analysis(
             risk_analysis_text=risk_response.risk_analysis,
-            report_type="TRANSACTION_AUDIT"
+            report_type="CONSUMPTION_AUDIT"
         )
         
         if "error" in audit_report:
@@ -508,8 +518,8 @@ async def compliance_report_executor(
 # Build workflow with three executors
 workflow = (
     WorkflowBuilder(
-        name="Fraud Detection Workflow",
-        description="3-step fraud detection workflow: Customer Data → Risk Analysis → Compliance Report"
+        name="Energy Fraud Detection Workflow",
+        description="3-step energy fraud detection workflow: Customer Data → Risk Analysis → Compliance Report"
     )
     .set_start_executor(customer_data_executor)
     .add_edge(customer_data_executor, risk_analyzer_executor)
@@ -519,7 +529,7 @@ workflow = (
 
 
 def main():
-    """Launch the fraud detection workflow in DevUI."""
+    """Launch the energy fraud detection workflow in DevUI."""
     import logging
     from agent_framework.devui import serve
 
@@ -527,9 +537,9 @@ def main():
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     logger = logging.getLogger(__name__)
 
-    logger.info("Starting Fraud Detection Workflow")
+    logger.info("Starting Energy Fraud Detection Workflow")
     logger.info("Available at: http://localhost:8093")
-    logger.info("Entity ID: workflow_fraud_detection")
+    logger.info("Entity ID: workflow_energy_fraud_detection")
 
     # Launch server with the workflow
     serve(entities=[workflow], port=8093, auto_open=True)
