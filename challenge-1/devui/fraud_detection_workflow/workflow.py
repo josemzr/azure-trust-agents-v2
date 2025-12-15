@@ -8,6 +8,7 @@ from typing_extensions import Never
 from agent_framework import WorkflowBuilder, WorkflowContext, WorkflowOutputEvent, executor, ChatAgent
 from agent_framework.azure import AzureAIAgentClient
 from azure.identity.aio import AzureCliCredential
+from azure.identity import DefaultAzureCredential
 from azure.cosmos import CosmosClient
 from dotenv import load_dotenv
 from pydantic import BaseModel
@@ -17,8 +18,8 @@ load_dotenv(override=True)
 
 # Initialize Cosmos DB connection
 cosmos_endpoint = os.environ.get("COSMOS_ENDPOINT")
-cosmos_key = os.environ.get("COSMOS_KEY")
-cosmos_client = CosmosClient(cosmos_endpoint, cosmos_key)
+cosmos_credential = DefaultAzureCredential()
+cosmos_client = CosmosClient(cosmos_endpoint, cosmos_credential)
 database = cosmos_client.get_database_client("EnergyComplianceDB")
 customers_container = database.get_container_client("Customers")
 transactions_container = database.get_container_client("Transactions")

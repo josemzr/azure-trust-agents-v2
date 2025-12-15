@@ -2,6 +2,7 @@ import asyncio
 import os
 from typing import Annotated
 from azure.identity.aio import AzureCliCredential
+from azure.identity import DefaultAzureCredential
 from agent_framework.azure import AzureAIAgentClient
 from agent_framework import ChatAgent
 from azure.cosmos import CosmosClient
@@ -14,10 +15,10 @@ load_dotenv(override=True)
 project_endpoint = os.environ.get("AI_FOUNDRY_PROJECT_ENDPOINT")
 model_deployment_name = os.environ.get("MODEL_DEPLOYMENT_NAME")
 cosmos_endpoint = os.environ.get("COSMOS_ENDPOINT")
-cosmos_key = os.environ.get("COSMOS_KEY")
 
 # Initialize Cosmos DB clients globally for function tools
-cosmos_client = CosmosClient(cosmos_endpoint, cosmos_key)
+cosmos_credential = DefaultAzureCredential()
+cosmos_client = CosmosClient(cosmos_endpoint, cosmos_credential)
 database = cosmos_client.get_database_client("EnergyComplianceDB")
 customers_container = database.get_container_client("Customers")
 transactions_container = database.get_container_client("Transactions")

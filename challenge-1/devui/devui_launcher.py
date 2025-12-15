@@ -42,8 +42,7 @@ def check_environment():
     required_vars = [
         "AI_FOUNDRY_PROJECT_ENDPOINT",
         "MODEL_DEPLOYMENT_NAME",
-        "COSMOS_ENDPOINT",
-        "COSMOS_KEY"
+        "COSMOS_ENDPOINT"
     ]
     
     missing_vars = []
@@ -164,7 +163,6 @@ Environment Variables Required:
   AI_FOUNDRY_PROJECT_ENDPOINT   - Azure AI Foundry project endpoint
   MODEL_DEPLOYMENT_NAME         - Model deployment name
   COSMOS_ENDPOINT              - Cosmos DB endpoint
-  COSMOS_KEY                   - Cosmos DB key
 
 Optional:
   AZURE_AI_CONNECTION_ID       - Azure AI Search connection ID
