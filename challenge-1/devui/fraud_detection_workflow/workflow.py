@@ -181,8 +181,8 @@ Consumption History:
 
 ENERGY FRAUD RISK INDICATORS:
 - High Consumption: {transaction_data.get('consumption_kwh', 0) > 1000}
-- Low Consumption (potential tampering): {transaction_data.get('consumption_kwh', 0) < customer_data.get('baseline_consumption_kwh', 0) * 0.5}
-- Consumption vs Baseline: {(transaction_data.get('consumption_kwh', 0) / customer_data.get('baseline_consumption_kwh', 1)) * 100:.1f}%
+- Low Consumption (potential tampering): {transaction_data.get('consumption_kwh', 0) < customer_data.get('baseline_consumption_kwh', 0) * 0.5 if customer_data.get('baseline_consumption_kwh', 0) > 0 else False}
+- Consumption vs Baseline: {(transaction_data.get('consumption_kwh', 0) / customer_data.get('baseline_consumption_kwh', 1) * 100) if customer_data.get('baseline_consumption_kwh', 0) > 0 else 'N/A (no baseline)'}
 - New Account: {customer_data.get('account_age_days', 0) < 30}
 - Low Meter Trust: {customer_data.get('meter_trust_score', 1.0) < 0.5}
 - Past Fraud History: {customer_data.get('past_fraud', False)}
