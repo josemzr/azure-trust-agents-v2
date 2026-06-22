@@ -315,11 +315,11 @@ class CosmosDbInstrumentation:
                         })
                         
                         if "error" not in result:
-                            span.set_attribute("transaction.amount", result.get("amount", 0))
-                            span.set_attribute("transaction.currency", result.get("currency", ""))
-                            span.set_attribute("transaction.destination", result.get("destination_country", ""))
+                            span.set_attribute("meter.consumption_kwh", result.get("consumption_kwh", 0))
+                            span.set_attribute("meter.id", result.get("meter_id", ""))
+                            span.set_attribute("meter.reading_type", result.get("reading_type", ""))
                             span.set_attribute("cosmos_db.success", True)
-                            result_span.add_event("Transaction data parsed successfully")
+                            result_span.add_event("Meter reading data parsed successfully")
                         else:
                             span.set_attribute("cosmos_db.success", False)
                             span.set_attribute("cosmos_db.error", result["error"])

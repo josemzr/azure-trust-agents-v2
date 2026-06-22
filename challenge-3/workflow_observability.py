@@ -76,7 +76,8 @@ cosmos_instrumentation = CosmosDbInstrumentation(telemetry)
 # Request/Response models
 class AnalysisRequest(BaseModel):
     message: str
-    transaction_id: str = "TX2002"
+    # transaction_id maps to the meter reading_id in the energy vertical
+    transaction_id: str = "TX2003"
 
 class CustomerDataResponse(BaseModel):
     customer_data: str
@@ -127,46 +128,49 @@ class FraudAlertResponse(BaseModel):
 # Cosmos DB helper functions with telemetry decorators
 @cosmos_instrumentation.instrument_transaction_get
 def get_transaction_data(transaction_id: str) -> dict:
-    """Get transaction data from Cosmos DB."""
+    """Get energy meter reading from Cosmos DB (keyed by reading_id / id)."""
     try:
-        query = f"SELECT * FROM c WHERE c.transaction_id = '{transaction_id}'"
+        query = "SELECT * FROM c WHERE c.reading_id = @tid OR c.id = @tid"
         items = list(transactions_container.query_items(
             query=query,
+            parameters=[{"name": "@tid", "value": transaction_id}],
             enable_cross_partition_query=True
         ))
-        
-        return items[0] if items else {"error": f"Transaction {transaction_id} not found"}
-        
+
+        return items[0] if items else {"error": f"Reading {transaction_id} not found"}
+
     except Exception as e:
         return {"error": str(e)}
 
 @cosmos_instrumentation.instrument_customer_get
 def get_customer_data(customer_id: str) -> dict:
-    """Get customer data from Cosmos DB."""
+    """Get energy customer data from Cosmos DB."""
     try:
-        query = f"SELECT * FROM c WHERE c.customer_id = '{customer_id}'"
+        query = "SELECT * FROM c WHERE c.customer_id = @cid"
         items = list(customers_container.query_items(
             query=query,
+            parameters=[{"name": "@cid", "value": customer_id}],
             enable_cross_partition_query=True
         ))
-        
+
         return items[0] if items else {"error": f"Customer {customer_id} not found"}
-        
+
     except Exception as e:
         return {"error": str(e)}
 
 @cosmos_instrumentation.instrument_transaction_list
 def get_customer_transactions(customer_id: str) -> list:
-    """Get all transactions for a customer from Cosmos DB."""
+    """Get all meter readings for an energy customer from Cosmos DB."""
     try:
-        query = f"SELECT * FROM c WHERE c.customer_id = '{customer_id}'"
+        query = "SELECT * FROM c WHERE c.customer_id = @cid"
         items = list(transactions_container.query_items(
             query=query,
+            parameters=[{"name": "@cid", "value": customer_id}],
             enable_cross_partition_query=True
         ))
-        
+
         return items
-        
+
     except Exception as e:
         return [{"error": str(e)}]
 
@@ -181,131 +185,143 @@ def parse_risk_analysis_result(risk_analysis_text: str) -> dict:
         }
         
         text_lower = risk_analysis_text.lower()
-        
-        # Extract risk score 
+
+        # Extract risk score
         risk_score_pattern = r'risk\s*score[:\s]*(\d+(?:\.\d+)?)'
         score_match = re.search(risk_score_pattern, text_lower)
         if score_match:
             analysis_data["parsed_elements"]["risk_score"] = float(score_match.group(1))
         else:
-            # If no explicit score found, calculate based on content analysis
-            calculated_score = 20.0  # Start with baseline low-medium risk
-            
-            # High-risk countries (moderate increase, not overwhelming)
-            if any(country in text_lower for country in ['russia', 'russian', 'iran', 'iranian', 'north korea', 'syria', 'yemen']):
-                calculated_score += 40  # Was 80, now more moderate
-            elif "high-risk country" in text_lower or "high risk country" in text_lower:
-                calculated_score += 35  # Was 75, now more moderate
-            elif "sanctions" in text_lower and not any(phrase in text_lower for phrase in ["no sanctions", "sanctions check clear"]):
-                calculated_score += 45  # Was 85, now more moderate
-            
-            # Large amounts increase risk moderately
-            if ("large amount" in text_lower or "high amount" in text_lower) and not any(phrase in text_lower for phrase in ["below", "under", "not large"]):
-                calculated_score += 15  # Was 20, slightly reduced
-                
-            # Suspicious patterns (moderate increase)
-            if "suspicious" in text_lower and not any(phrase in text_lower for phrase in ["no suspicious", "not suspicious", "no triggering"]):
-                calculated_score += 20  # Was 30, now more moderate
-                
-            # New account or low trust factors
-            if "new account" in text_lower or "low.*trust" in text_lower:
+            # If no explicit score found, calculate based on energy-fraud indicators
+            calculated_score = 20.0  # Baseline low-medium risk
+
+            # Meter tampering / bypass
+            if any(k in text_lower for k in ["meter tampering", "meter bypass", "tampered meter", "bypass"]) \
+                    and not any(p in text_lower for p in ["no tampering", "no bypass"]):
+                calculated_score += 45
+
+            # Consumption anomalies
+            if any(k in text_lower for k in ["consumption spike", "usage spike", "abnormal consumption", "high consumption"]) \
+                    and not any(p in text_lower for p in ["no spike", "normal consumption"]):
+                calculated_score += 35
+            if any(k in text_lower for k in ["abnormally low", "unusually low consumption", "zero consumption"]):
+                calculated_score += 35
+
+            # Meter trust
+            if "low meter trust" in text_lower or ("meter trust" in text_lower and "low" in text_lower and "not low" not in text_lower):
+                calculated_score += 20
+
+            # Manual reading
+            if "manual reading" in text_lower or "non-automated" in text_lower:
                 calculated_score += 10
-                
-            # Past fraud history
-            if "past fraud" in text_lower or "fraud history" in text_lower:
+
+            # Past fraud
+            if "past fraud" in text_lower and not any(p in text_lower for p in ["no past fraud", "past fraud: false"]):
                 calculated_score += 25
-            
-            # Final recommendation adjustments (but don't override calculated scores too aggressively)
+
+            # Generic suspicious patterns
+            if "suspicious" in text_lower and not any(p in text_lower for p in ["no suspicious", "not suspicious", "no triggering"]):
+                calculated_score += 20
+
+            # Final recommendation adjustments
             if "block" in text_lower or "reject" in text_lower:
-                calculated_score = max(calculated_score, 75)  # Was 80, slightly reduced
-            elif "high risk" in text_lower and not any(phrase in text_lower for phrase in ["not high risk", "no high risk"]):
-                calculated_score = max(calculated_score, 65)  # New moderate adjustment
+                calculated_score = max(calculated_score, 75)
+            elif "high risk" in text_lower and not any(p in text_lower for p in ["not high risk", "no high risk"]):
+                calculated_score = max(calculated_score, 65)
             elif "medium risk" in text_lower:
-                calculated_score = max(calculated_score, 45)  # Was 60, adjusted for medium range
+                calculated_score = max(calculated_score, 45)
             elif "low risk" in text_lower or "approve" in text_lower:
-                calculated_score = min(calculated_score, 30)  # Cap low risk transactions
-                
-            # Cap at 100 and ensure minimum
-            calculated_score = max(10.0, min(100.0, calculated_score))  # Ensure range 10-100
+                calculated_score = min(calculated_score, 30)
+
+            calculated_score = max(10.0, min(100.0, calculated_score))
             analysis_data["parsed_elements"]["risk_score"] = calculated_score
-        
+
         # Extract risk level
         risk_level_pattern = r'risk\s*level[:\s]*(\w+)'
         level_match = re.search(risk_level_pattern, text_lower)
         if level_match:
             analysis_data["parsed_elements"]["risk_level"] = level_match.group(1).upper()
-        
-        # Extract transaction ID
-        tx_pattern = r'transaction[:\s]*([A-Z0-9]+)'
-        tx_match = re.search(tx_pattern, risk_analysis_text)
+
+        # Extract reading / transaction ID
+        tx_pattern = r'(?:transaction|reading)[:\s]*([A-Z0-9]+)'
+        tx_match = re.search(tx_pattern, risk_analysis_text, re.IGNORECASE)
         if tx_match:
             analysis_data["parsed_elements"]["transaction_id"] = tx_match.group(1)
-        
-        # Extract key risk factors mentioned (only if they indicate actual risk)
+
+        # Energy-fraud risk factors (only if actually flagged)
         risk_factors = []
-        
-        # Only flag high-risk country if it's actually mentioned as a concern
-        if ("high-risk country" in text_lower or "high risk country" in text_lower) and not any(phrase in text_lower for phrase in ["not in", "no high-risk", "not high-risk", "low-risk"]):
-            risk_factors.append("HIGH_RISK_JURISDICTION")
-            
-        # Only flag large amounts if mentioned as problematic
-        if ("large amount" in text_lower or "high amount" in text_lower) and not any(phrase in text_lower for phrase in ["below", "under", "not large", "not high"]):
-            risk_factors.append("UNUSUAL_AMOUNT")
-            
-        # Only flag suspicious if it's a concern, not if it says "no suspicious"
-        if "suspicious" in text_lower and not any(phrase in text_lower for phrase in ["no suspicious", "not suspicious", "no triggering"]):
+
+        if any(k in text_lower for k in ["meter tampering", "meter bypass", "tampered meter", "bypass"]) \
+                and not any(p in text_lower for p in ["no tampering", "no bypass"]):
+            risk_factors.append("METER_TAMPERING")
+
+        if any(k in text_lower for k in ["consumption spike", "usage spike", "abnormal consumption", "high consumption"]) \
+                and not any(p in text_lower for p in ["no spike", "normal consumption"]):
+            risk_factors.append("CONSUMPTION_SPIKE")
+
+        if any(k in text_lower for k in ["abnormally low", "zero consumption", "unusually low consumption"]):
+            risk_factors.append("POSSIBLE_BYPASS")
+
+        if "low meter trust" in text_lower or ("meter trust" in text_lower and "low" in text_lower and "not low" not in text_lower):
+            risk_factors.append("LOW_METER_TRUST")
+
+        if "manual reading" in text_lower or "non-automated" in text_lower:
+            risk_factors.append("MANUAL_READING")
+
+        if "past fraud" in text_lower and not any(p in text_lower for p in ["no past fraud", "past fraud: false"]):
+            risk_factors.append("PAST_FRAUD_HISTORY")
+
+        if "suspicious" in text_lower and not any(p in text_lower for p in ["no suspicious", "not suspicious", "no triggering"]):
             risk_factors.append("SUSPICIOUS_PATTERN")
-            
-        # Only flag sanctions if there's an actual concern, not if it says "no sanctions"
-        if "sanction" in text_lower and any(phrase in text_lower for phrase in ["sanctions concern", "sanctions flag", "sanctions match", "sanctions risk"]) and not any(phrase in text_lower for phrase in ["no sanctions", "sanctions check clear", "no sanctions flag"]):
-            risk_factors.append("SANCTIONS_CONCERN")
-            
-        # Only flag frequency issues if mentioned as problematic
-        if ("frequent" in text_lower or "unusual frequency" in text_lower) and not any(phrase in text_lower for phrase in ["not frequent", "normal frequency"]):
-            risk_factors.append("FREQUENCY_ANOMALY")
-        
+
         analysis_data["parsed_elements"]["risk_factors"] = risk_factors
         return analysis_data
-        
+
     except Exception as e:
         return {"error": f"Failed to parse risk analysis: {str(e)}"}
 
-def generate_audit_report_from_risk_analysis(risk_analysis_text: str, report_type: str = "TRANSACTION_AUDIT") -> dict:
-    """Generate structured audit report from risk analysis text."""
-    
+def generate_audit_report_from_risk_analysis(risk_analysis_text: str, report_type: str = "ENERGY_METER_READING_AUDIT") -> dict:
+    """Generate structured energy-compliance audit report from risk analysis text."""
+
     try:
         # Parse the risk analysis
         parsed_data = parse_risk_analysis_result(risk_analysis_text)
-        
+
         if "error" in parsed_data:
             return parsed_data
-        
+
         # Generate audit report ID
         report_id = f"AUDIT_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{report_type}"
-        
-        # Analyze content for risk factors and compliance issues
+
         text_upper = risk_analysis_text.upper()
-        
-        # Risk factor identification
+        text_lower = risk_analysis_text.lower()
+
+        # Energy-fraud risk factor identification
         risk_factors = []
         if "HIGH RISK" in text_upper or "SUSPICIOUS" in text_upper:
-            risk_factors.append("High risk transaction pattern detected")
-        if "SANCTIONS" in text_upper or "BLACKLIST" in text_upper:
-            risk_factors.append("Potential sanctions list match")
-        if "FRAUD" in text_upper:
-            risk_factors.append("Fraud indicators present")
-        if "AML" in text_upper or "MONEY LAUNDERING" in text_upper:
-            risk_factors.append("Anti-Money Laundering concerns")
-        
-        # Compliance concerns
+            risk_factors.append("High-risk meter reading pattern detected")
+        if any(k in text_lower for k in ["meter tampering", "tampered meter"]):
+            risk_factors.append("Meter tampering suspected")
+        if "bypass" in text_lower and "no bypass" not in text_lower:
+            risk_factors.append("Possible meter bypass / illegal connection")
+        if any(k in text_lower for k in ["consumption spike", "usage spike", "abnormal consumption"]):
+            risk_factors.append("Abnormal consumption vs customer baseline")
+        if "low meter trust" in text_lower:
+            risk_factors.append("Low meter trust score (telemetry integrity)")
+        if "manual reading" in text_lower or "non-automated" in text_lower:
+            risk_factors.append("Non-automated (manual) meter reading")
+        if "past fraud" in text_lower and "no past fraud" not in text_lower:
+            risk_factors.append("Customer has prior energy-fraud history")
+
+        # Energy-compliance concerns
         compliance_concerns = []
-        if "REGULATORY" in text_upper or "COMPLIANCE" in text_upper:
-            compliance_concerns.append("Regulatory compliance review required")
-        if "KYC" in text_upper or "KNOW YOUR CUSTOMER" in text_upper:
-            compliance_concerns.append("KYC verification needed")
-        if "INVESTIGATION" in text_upper:
-            compliance_concerns.append("Further investigation recommended")
-        
+        if any(k in text_lower for k in ["remit", "regulatory", "compliance"]):
+            compliance_concerns.append("REMIT II / regulatory compliance review required")
+        if "field inspection" in text_lower or "on-site inspection" in text_lower:
+            compliance_concerns.append("On-site meter inspection required")
+        if "investigation" in text_lower:
+            compliance_concerns.append("Further investigation / theft case recommended")
+
         # Determine compliance rating
         if "BLOCK" in text_upper or "REJECT" in text_upper:
             compliance_rating = "NON_COMPLIANT"
@@ -318,7 +334,7 @@ def generate_audit_report_from_risk_analysis(risk_analysis_text: str, report_typ
         else:
             compliance_rating = "REVIEW_REQUIRED"
             requires_immediate_action = bool(risk_factors)
-            requires_regulatory_filing = "SANCTIONS" in text_upper
+            requires_regulatory_filing = any(k in text_lower for k in ["meter tampering", "bypass", "theft"])
         
         # Generate audit report structure
         audit_report = {
@@ -347,36 +363,36 @@ def generate_audit_report_from_risk_analysis(risk_analysis_text: str, report_typ
             }
         }
         
-        # Generate recommendations based on findings
+        # Generate recommendations based on findings (energy vertical)
         if requires_immediate_action:
             audit_report["detailed_findings"]["recommendations"].extend([
-                "Immediate transaction review required",
-                "Enhanced due diligence procedures",
-                "Supervisor approval mandatory"
+                "Dispatch field crew for on-site meter inspection",
+                "Suspend billing reconciliation pending investigation",
+                "Open energy-theft case with DSO compliance team"
             ])
-        
+
         if requires_regulatory_filing:
             audit_report["detailed_findings"]["recommendations"].extend([
-                "File Suspicious Activity Report (SAR)",
-                "Notify relevant regulatory authorities",
-                "Maintain detailed transaction records"
+                "File energy-theft incident report with regulator / DSO",
+                "Notify REMIT II surveillance team where applicable",
+                "Maintain detailed meter-reading audit trail"
             ])
-        
+
         if compliance_rating == "REVIEW_REQUIRED":
             audit_report["detailed_findings"]["recommendations"].extend([
-                "Schedule compliance review meeting",
-                "Additional customer verification",
-                "Monitor for pattern analysis"
+                "Schedule enhanced telemetry monitoring for the meter",
+                "Correlate reading with SCADA / AMI historical profile",
+                "Cross-check against weather and occupancy data"
             ])
-        
+
         if risk_factors:
             audit_report["detailed_findings"]["recommendations"].extend([
-                "Place customer on enhanced monitoring list",
-                "Review transaction against internal risk policies"
+                "Place meter on enhanced telemetry-monitoring watchlist",
+                "Review reading against internal energy-fraud policies"
             ])
         else:
             audit_report["detailed_findings"]["recommendations"].append(
-                "Continue standard monitoring procedures"
+                "Continue standard AMI monitoring procedures"
             )
         
         return audit_report
@@ -483,61 +499,75 @@ async def customer_data_executor(
                         "history.count": len(transaction_history) if isinstance(transaction_history, list) else 0
                     })
                 
+                # Compute energy-fraud indicators
+                consumption = transaction_data.get('consumption_kwh', 0) or 0
+                baseline = customer_data.get('baseline_consumption_kwh', 0) or 0
+                spike_ratio = (consumption / baseline) if baseline else 0
+                high_consumption_spike = spike_ratio > 3
+                possible_bypass = 0 < spike_ratio < 0.2
+                high_risk_region = customer_data.get('region') in ['Sanctioned-Zone', 'High-Risk-Grid']
+                new_account = customer_data.get('account_age_days', 0) < 30
+                low_meter_trust = customer_data.get('meter_trust_score', 1.0) < 0.5
+                manual_reading = transaction_data.get('reading_type') != 'Automated'
+                past_fraud = customer_data.get('past_fraud', False)
+
                 # Add business metrics and attributes
                 span.set_attributes({
                     "customer.id": customer_id,
-                    "transaction.amount": transaction_data.get('amount', 0),
-                    "transaction.currency": transaction_data.get('currency', ''),
-                    "transaction.destination": transaction_data.get('destination_country', ''),
-                    "customer.transaction_count": len(transaction_history) if isinstance(transaction_history, list) else 0
+                    "meter.consumption_kwh": consumption,
+                    "meter.baseline_kwh": baseline,
+                    "meter.id": transaction_data.get('meter_id', ''),
+                    "meter.reading_type": transaction_data.get('reading_type', ''),
+                    "customer.region": customer_data.get('region', ''),
+                    "customer.reading_count": len(transaction_history) if isinstance(transaction_history, list) else 0
                 })
-                
-                # Create comprehensive analysis with fraud risk indicators
-                high_amount = transaction_data.get('amount', 0) > 10000
-                high_risk_country = transaction_data.get('destination_country') in ['IR', 'RU', 'NG', 'KP']
-                new_account = customer_data.get('account_age_days', 0) < 30
-                low_device_trust = customer_data.get('device_trust_score', 1.0) < 0.5
-                past_fraud = customer_data.get('past_fraud', False)
-                
-                # Log fraud indicators as events
+
                 fraud_indicators = {
-                    "high_amount": high_amount,
-                    "high_risk_country": high_risk_country,
+                    "high_consumption_spike": high_consumption_spike,
+                    "possible_bypass": possible_bypass,
+                    "high_risk_region": high_risk_region,
                     "new_account": new_account,
-                    "low_device_trust": low_device_trust,
+                    "low_meter_trust": low_meter_trust,
+                    "manual_reading": manual_reading,
                     "past_fraud": past_fraud
                 }
-                
-                span.add_event("Fraud indicators calculated", fraud_indicators)
-                span.set_attributes({f"fraud.indicator.{k}": v for k, v in fraud_indicators.items()})
-                
-                analysis_text = f"""
-COSMOS DB DATA ANALYSIS:
 
-Transaction {request.transaction_id}:
-- Amount: ${transaction_data.get('amount')} {transaction_data.get('currency')}
+                span.add_event("Energy-fraud indicators calculated", fraud_indicators)
+                span.set_attributes({f"fraud.indicator.{k}": v for k, v in fraud_indicators.items()})
+
+                analysis_text = f"""
+COSMOS DB DATA ANALYSIS (Energy Vertical):
+
+Meter Reading {request.transaction_id}:
+- Consumption: {consumption} kWh
+- Meter ID: {transaction_data.get('meter_id')}
+- Reading Type: {transaction_data.get('reading_type')}
 - Customer: {customer_id}
-- Destination: {transaction_data.get('destination_country')}
 - Timestamp: {transaction_data.get('timestamp')}
 
 Customer Profile ({customer_id}):
 - Name: {customer_data.get('name')}
-- Country: {customer_data.get('country')}
+- Region: {customer_data.get('region')}
+- Property Type: {customer_data.get('property_type')}
+- Baseline Consumption: {baseline} kWh
 - Account Age: {customer_data.get('account_age_days')} days
-- Device Trust Score: {customer_data.get('device_trust_score')}
+- Meter Trust Score: {customer_data.get('meter_trust_score')}
 - Past Fraud: {customer_data.get('past_fraud')}
 
-Transaction History:
-- Total Transactions: {len(transaction_history) if isinstance(transaction_history, list) else 0}
+Reading History:
+- Total Readings: {len(transaction_history) if isinstance(transaction_history, list) else 0}
 
-FRAUD RISK INDICATORS:
-- High Amount: {high_amount}
-- High Risk Country: {high_risk_country}
+ENERGY FRAUD RISK INDICATORS:
+- Consumption Spike vs Baseline (ratio): {spike_ratio:.2f}x
+- High Consumption Spike (>3x baseline): {high_consumption_spike}
+- Abnormally Low Consumption (<0.2x baseline, possible bypass): {possible_bypass}
+- High-Risk Region: {high_risk_region}
 - New Account: {new_account}
-- Low Device Trust: {low_device_trust}
+- Low Meter Trust Score: {low_meter_trust}
+- Manual (non-automated) Reading: {manual_reading}
 - Past Fraud History: {past_fraud}
 
-Ready for risk assessment analysis.
+Ready for risk assessment analysis against REMIT II / energy-theft detection guidelines.
 """
                 
                 result = CustomerDataResponse(
@@ -639,23 +669,23 @@ async def risk_analyzer_executor(
                         store=True
                     )
                     
-                    # Create risk assessment prompt
+                    # Create energy-fraud risk assessment prompt
                     risk_prompt = f"""
-Based on the comprehensive fraud analysis provided below, please provide your expert regulatory and compliance risk assessment:
+Based on the comprehensive energy-fraud analysis provided below, please provide your expert risk and compliance assessment for this meter reading:
 
 Analysis Data: {customer_response.customer_data}
 
 Please focus on:
-1. Validating the risk factors identified in the analysis
-2. Assessing the risk score and level from a regulatory perspective
-3. Providing additional AML/KYC compliance considerations
-4. Checking against sanctions lists and regulatory requirements
-5. Final recommendation on transaction approval/blocking/investigation
-6. Regulatory reporting requirements if any
+1. Validating the energy-fraud risk indicators (consumption spike vs baseline, possible meter bypass, low meter trust score, manual reading, past fraud history)
+2. Assessing the risk score and level from an energy-market / DSO compliance perspective
+3. Additional considerations under REMIT II and national energy-theft detection guidelines
+4. Recommending field inspection, meter replacement, or billing hold where appropriate
+5. Final recommendation: APPROVE (normal), INVESTIGATE (enhanced monitoring), or BLOCK (open theft case)
+6. Regulatory / DSO reporting requirements if any
 
-Transaction ID: {customer_response.transaction_id}
+Meter Reading ID: {customer_response.transaction_id}
 
-Provide a structured risk assessment with clear regulatory justification.
+Provide a structured risk assessment with clear justification grounded in the telemetry and baseline data.
 """
                     
                     # Run AI analysis with timing
@@ -678,15 +708,15 @@ Provide a structured risk assessment with clear regulatory justification.
                     recommendation = "INVESTIGATE"  # Default
                     compliance_notes = ""
                     
-                    # Analyze AI response for key indicators
+                    # Analyze AI response for energy-fraud indicators
                     if "HIGH RISK" in result_text.upper() or "BLOCK" in result_text.upper():
                         recommendation = "BLOCK"
-                        risk_factors.append("High risk transaction identified")
+                        risk_factors.append("High risk energy reading identified")
                     elif "LOW RISK" in result_text.upper() or "APPROVE" in result_text.upper():
                         recommendation = "APPROVE"
-                    
-                    if "IRAN" in result_text.upper() or "SANCTIONS" in result_text.upper():
-                        compliance_notes = "Sanctions compliance review required"
+
+                    if any(k in result_text.upper() for k in ["TAMPER", "BYPASS", "THEFT"]):
+                        compliance_notes = "Energy-theft investigation required (meter tampering / bypass suspected)"
                     
                     # Calculate detailed risk score using the same parsing logic as compliance report
                     parsed_risk_data = parse_risk_analysis_result(result_text)
@@ -834,28 +864,27 @@ async def compliance_report_executor(
                         store=True
                     )
                     
-                    # Create comprehensive compliance report prompt focused on audit reporting only
-                    compliance_prompt = f"""Generate a comprehensive compliance audit report based on this risk analysis:
+                    # Create energy-compliance audit report prompt
+                    compliance_prompt = f"""Generate a comprehensive energy-compliance audit report based on this risk analysis:
 
 Risk Analysis Result:
 {risk_response.risk_analysis}
 
-Transaction ID: {risk_response.transaction_id}
+Meter Reading ID: {risk_response.transaction_id}
 Risk Score: {risk_response.risk_score}
 Recommendation: {risk_response.recommendation}
 Risk Factors: {risk_response.risk_factors}
 Compliance Notes: {risk_response.compliance_notes}
 
 Please provide a structured audit report including:
-1. Formal compliance audit report with detailed compliance ratings
-2. Risk factor analysis and regulatory implications
-3. Executive summary of audit findings
-4. Recommendations for management action and compliance measures
-5. Compliance status assessment and regulatory filing requirements
+1. Formal energy-compliance audit report with detailed compliance ratings (COMPLIANT / CONDITIONAL_COMPLIANCE / NON_COMPLIANT)
+2. Risk factor analysis with focus on meter tampering, bypass, consumption spikes, low meter trust, manual readings, past fraud
+3. Executive summary of audit findings for DSO / market-surveillance teams
+4. Recommendations (field inspection, meter replacement, billing hold, theft case opening)
+5. Compliance status against REMIT II and national energy-theft regulations
 6. Detailed audit conclusions with regulatory justification
 
-Focus on regulatory compliance, audit documentation, and actionable compliance recommendations. 
-Provide a comprehensive compliance assessment that management can use for regulatory reporting and internal compliance processes."""
+Strictly do NOT use AML, KYC, sanctions or banking terminology. This audit concerns electricity meter readings."""
                     
                     start_time = asyncio.get_event_loop().time()
                     result = await compliance_agent.run(compliance_prompt)
@@ -1028,32 +1057,39 @@ async def fraud_alert_executor(
             with project_client:
                 agents_client = project_client.agents
 
-                # Create fraud alert agent with MCP tool
+                # Create energy-fraud alert agent with MCP tool
                 agent = agents_client.create_agent(
                     model=model_deployment_name,
                     name="fraud-alert-agent",
                     instructions="""
-You are a Fraud Alert Management Agent that specializes in creating and managing fraud alerts for financial transactions.
+You are an Energy-Fraud Alert Management Agent that specializes in creating and managing alerts for suspected energy theft, meter tampering, and anomalous consumption on the electricity grid.
 
 Your responsibilities include:
-- Analyzing risk assessment results to determine if fraud alerts are needed
-- Creating appropriate fraud alerts using the MCP tool with correct severity and status
-- Determining proper decision actions (ALLOW, BLOCK, MONITOR, INVESTIGATE)
-- Providing clear reasoning for alert decisions
+- Analyzing risk-assessment results for meter readings to determine whether an energy-fraud alert must be raised
+- Creating appropriate alerts using the MCP tool with correct severity, status and decision action
+- Determining the proper operational action (ALLOW, BLOCK, MONITOR, INVESTIGATE) for the meter / customer account
+- Providing clear, evidence-based reasoning grounded in the telemetry and customer profile
 
-When creating fraud alerts, use these enumerations:
-- severity (LOW, MEDIUM, HIGH, CRITICAL)
-- status (OPEN, INVESTIGATING, RESOLVED, FALSE_POSITIVE)
-- decision action (ALLOW, BLOCK, MONITOR, INVESTIGATE)
+When creating alerts, use these enumerations:
+- severity: LOW, MEDIUM, HIGH, CRITICAL
+- status: OPEN, INVESTIGATING, RESOLVED, FALSE_POSITIVE
+- decision action: ALLOW, BLOCK, MONITOR, INVESTIGATE
+  (Energy semantics: ALLOW = continue normal billing; MONITOR = enhanced telemetry watch;
+   INVESTIGATE = schedule field inspection of the meter; BLOCK = suspend service / open energy-theft case)
 
-Create fraud alerts for transactions that meet any of these criteria:
-1. High risk scores (>= 75)
-2. Sanctions-related concerns
-3. High-risk jurisdictions
-4. Suspicious patterns or anomalies
-5. Regulatory compliance violations
+Create an alert whenever the risk analysis surfaces any of:
+1. Risk score >= 75
+2. Meter tampering or bypass suspicion
+3. Consumption spike > 3x customer baseline not explained by property/weather
+4. Low meter trust score
+5. Manual (non-automated) readings on accounts that should be telemetered
+6. Customer with prior energy-fraud history
+7. Regulatory-relevant anomalies under REMIT II or national energy-theft regulations
 
-Always create comprehensive alerts with proper risk factor documentation and clear reasoning.
+Never reference AML, KYC, sanctions lists, jurisdictions, country risk, or financial-transaction concepts
+— this agent operates on electricity meter readings, not financial transfers.
+
+Always create comprehensive alerts with documented risk factors (tampering, bypass, spike, low meter trust, manual reading, past fraud) and clear reasoning referencing specific telemetry evidence.
 Send alerts using the MCP tool without asking for further confirmation.
 """,
                     tools=mcp_tool.definitions,
@@ -1062,11 +1098,11 @@ Send alerts using the MCP tool without asking for further confirmation.
                 # Create thread for communication
                 thread = agents_client.threads.create()
                 
-                # Create comprehensive message based on risk analysis
+                # Create comprehensive message based on risk analysis (energy vertical)
                 risk_summary = f"""
 Customer data: {risk_response.customer_data}
 
-RISK ANALYSIS SUMMARY FOR TRANSACTION {risk_response.transaction_id}
+ENERGY-FRAUD RISK ANALYSIS SUMMARY FOR METER READING {risk_response.transaction_id}
 
 Risk Analysis Result: {risk_response.risk_analysis}
 Risk Score: {risk_response.risk_score}
@@ -1075,15 +1111,15 @@ Risk Factors: {risk_response.risk_factors}
 Compliance Notes: {risk_response.compliance_notes}
 Status: {risk_response.status}
 
-Please analyze this risk assessment and create an appropriate fraud alert using the MCP tool if any risk factors or compliance concerns are identified. 
+Please analyze this energy-fraud risk assessment and create an appropriate alert using the MCP tool if any indicators (meter tampering, bypass, consumption spike, low meter trust, past fraud) are identified.
 
-Include all relevant transaction details, risk factors, and provide clear reasoning for the alert decision.
+Include meter reading details, customer profile, risk factors, and provide clear reasoning for the alert decision and recommended field/operations action.
 """
-                
+
                 message = agents_client.messages.create(
                     thread_id=thread.id,
                     role="user",
-                    content=f"Please analyze this risk assessment and create a fraud alert if needed: {risk_summary}",
+                    content=f"Please analyze this energy-fraud risk assessment and create an alert if needed: {risk_summary}",
                 )
                 
                 # Execute agent run with tool approvals
@@ -1262,8 +1298,8 @@ async def run_fraud_detection_workflow():
         
         # Create request
         request = AnalysisRequest(
-            message="Comprehensive fraud analysis using Microsoft Agent Framework with parallel execution and observability",
-            transaction_id="TX1015"
+            message="Comprehensive energy-fraud analysis using Microsoft Agent Framework with parallel execution and observability",
+            transaction_id="TX2003"
         )
         
         workflow_span.set_attributes({
@@ -1372,7 +1408,7 @@ async def main():
             if compliance_result and isinstance(compliance_result, ComplianceAuditResponse):
                 print(f"\n📋 COMPLIANCE REPORT EXECUTOR:")
                 print(f"   Status: {compliance_result.status}")
-                print(f"   Transaction ID: {compliance_result.transaction_id}")
+                print(f"   Meter Reading ID: {compliance_result.transaction_id}")
                 print(f"   Audit Report ID: {compliance_result.audit_report_id}")
                 print(f"   Compliance Rating: {compliance_result.compliance_rating}")
                 print(f"   Risk Score: {compliance_result.risk_score:.2f}")
@@ -1389,7 +1425,7 @@ async def main():
             if fraud_alert_result and isinstance(fraud_alert_result, FraudAlertResponse):
                 print(f"\n🚨 FRAUD ALERT EXECUTOR:")
                 print(f"   Status: {fraud_alert_result.status}")
-                print(f"   Transaction ID: {fraud_alert_result.transaction_id}")
+                print(f"   Meter Reading ID: {fraud_alert_result.transaction_id}")
                 print(f"   Alert ID: {fraud_alert_result.alert_id}")
                 print(f"   Alert Created: {'✅ YES' if fraud_alert_result.alert_created else '❌ NO'}")
                 print(f"   Severity: {fraud_alert_result.severity}")

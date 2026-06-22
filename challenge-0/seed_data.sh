@@ -14,9 +14,19 @@ fi
 
 echo "🚀 Starting data seeding..."
 
+# Resolve Python interpreter: prefer project venv at ../.venv, then active VIRTUAL_ENV, then python3
+if [ -x "../.venv/bin/python" ]; then
+    PYTHON="../.venv/bin/python"
+elif [ -n "$VIRTUAL_ENV" ] && [ -x "$VIRTUAL_ENV/bin/python" ]; then
+    PYTHON="$VIRTUAL_ENV/bin/python"
+else
+    PYTHON="python3"
+fi
+echo "🐍 Using Python: $PYTHON ($($PYTHON --version 2>&1))"
+
 # Install required Python packages
 echo "📦 Installing required Python packages..."
-pip3 install azure-cosmos azure-search-documents azure-identity requests --quiet
+"$PYTHON" -m pip install azure-cosmos azure-search-documents azure-identity requests --quiet
 
 # Create Python script to handle the data import
 cat > seed_data.py << 'EOF'
@@ -215,7 +225,7 @@ EOF
 
 # Run the Python script
 echo "🐍 Running data seeding script..."
-python3 seed_data.py
+"$PYTHON" seed_data.py
 
 # Clean up
 rm seed_data.py
